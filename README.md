@@ -13,7 +13,7 @@ Try `python` instead of `python3` if you get an error.
 ## Setup
 1. Clone this repository
 2. Make a venv (local package directory) with `python3 -m venv venv`
-3. Run `source venv/bin/activate` on Linux/MacOS or `./env/bin/activate.bat` on Windows (or might be `./env/bin/activate.ps1`)
+3. Run `source venv/bin/activate` on Linux/MacOS or `./venv/bin/activate.bat` on Windows (or might be `./venv/bin/activate.ps1`)
 4. Run `python3 -m pip install -r requirements.txt` in the root directory of the repository
 
 ## Setup / AWS
