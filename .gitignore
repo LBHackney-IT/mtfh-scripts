@@ -1,0 +1,12 @@
+.vscode
+.idea
+__pycache__
+__init__.py
+
+*.txt
+!requirements.txt
+
+*.csv
+!aws/tests/test_data/*.csv
+
+*.json
