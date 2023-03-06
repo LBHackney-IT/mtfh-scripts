@@ -24,7 +24,7 @@ you need to set your AWS credentials to be read by the AWS client in your `.aws/
 The name must exactly match one of the stages in the Stage enum in `aws/src/enums/enums.py`
 2. Open your .aws/credentials file and add your `aws_session_token` to the profile you just created (e.g. `aws_session_token = <token>`)
 
-3. Your credentials file should look something like this:
+3. Your credentials file should look something like this (for any environments you want to use):
 ```
 [development]
 aws_access_key_id = <access_key>
