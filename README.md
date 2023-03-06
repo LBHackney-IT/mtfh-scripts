@@ -13,7 +13,8 @@ Try `python` instead of `python3` if you get an error.
 ## Setup
 1. Clone this repository
 2. Make a venv (local package directory) with `python3 -m venv venv`
-2. Run `python3 -m pip install -r requirements.txt` in the root directory of the repository
+3. Run `source venv/bin/activate` on Linux/MacOS or `./env/bin/activate.bat` on Windows (or might be `./env/bin/activate.ps1`)
+4. Run `python3 -m pip install -r requirements.txt` in the root directory of the repository
 
 ## Setup / AWS
 Installing the [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2.html) is recommended - 
