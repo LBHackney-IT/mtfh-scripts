@@ -5,4 +5,3 @@ pytest>=7.2
 moto>=4.1
 tabulate>=0.9
 mypy-boto3-dynamodb>=1.26
-pytest>=7.2
