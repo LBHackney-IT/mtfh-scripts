@@ -1,9 +1,9 @@
-from mypy_boto3_dynamodb import ServiceResource
-from mypy_boto3_dynamodb.service_resource import Table
+# from mypy_boto3_dynamodb import ServiceResource
+# from mypy_boto3_dynamodb.service_resource import Table
 from difflib import get_close_matches
 
-from src.authentication.generate_aws_resource import generate_aws_resource
-from src.enums.enums import Stage
+from aws.src.authentication.generate_aws_resource import generate_aws_resource
+from aws.src.enums.enums import Stage
 
 
 def get_dynamodb_table(table_name: str, stage: Stage) -> Table:

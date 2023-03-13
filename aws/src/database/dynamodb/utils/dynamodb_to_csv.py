@@ -1,7 +1,7 @@
-from src.database.scripts.person_table.get_housing_officers_and_area_managers import logger
-from src.enums.enums import Stage
-from src.utils.filter_list_of_dictionaries_by_lambdas import filter_list_of_dictionaries_by_lambdas
-from src.database.utils.get_dynamodb_table import get_dynamodb_table
+from aws.src.database.scripts.person_table.get_housing_officers_and_area_managers import logger
+from aws.src.enums.enums import Stage
+from aws.src.utils.filter_list_of_dictionaries_by_lambdas import filter_list_of_dictionaries_by_lambdas
+from aws.src.database.utils.get_dynamodb_table import get_dynamodb_table
 
 
 def filter_and_write_to_csv(items, outfile, headings_filters):

@@ -1,12 +1,12 @@
 from dataclasses import dataclass
 from typing import TextIO, Any
 
-from src.database.domain.domain_objects import Asset
-from src.database.utils.dynamodb_item_factory import DynamodbItemFactory
-from src.database.utils.dynamodb_to_csv import dynamodb_to_csv
-from src.enums.enums import Stage
-from src.database.utils.get_dynamodb_table import get_dynamodb_table
-from src.utils.logger import Logger
+from aws.src.database.domain.domain_objects import Asset
+from aws.src.database.utils.dynamodb_item_factory import DynamodbItemFactory
+from aws.src.database.utils.dynamodb_to_csv import dynamodb_to_csv
+from aws.src.enums.enums import Stage
+from aws.src.database.utils.get_dynamodb_table import get_dynamodb_table
+from aws.src.utils.logger import Logger
 
 
 @dataclass

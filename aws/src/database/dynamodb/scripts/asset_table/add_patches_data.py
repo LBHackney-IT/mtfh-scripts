@@ -3,11 +3,11 @@ from pathlib import Path
 from boto3.dynamodb.table import BatchWriter
 from mypy_boto3_dynamodb.service_resource import Table
 
-from src.enums.enums import Stage
-from src.utils.csv_to_dict_list import csv_to_dict_list
-from src.database.utils.get_dynamodb_table import get_dynamodb_table
-from src.utils.logger import Logger
-from src.utils.progress_bar import ProgressBar
+from aws.src.enums.enums import Stage
+from aws.src.utils.csv_to_dict_list import csv_to_dict_list
+from aws.src.database.dynamodb.utils.get_dynamodb_table import get_dynamodb_table
+from aws.src.utils.logger import Logger
+from aws.src.utils.progress_bar import ProgressBar
 
 
 class Config:
