@@ -1,10 +1,9 @@
+from typing import Literal, Any
 import boto3
 import botocore.exceptions
 from boto3 import Session
-from mypy_boto3_dynamodb import ServiceResource
-import os
-
-from src.enums.enums import Stage
+from boto3.resources.base import ServiceResource
+from aws.src.enums.enums import Stage
 
 
 def get_session_for_stage(stage: Stage) -> Session:
@@ -38,17 +37,32 @@ def get_session_for_stage(stage: Stage) -> Session:
     return session
 
 
-def generate_aws_resource(service: str, stage: Stage) -> ServiceResource:
+def generate_aws_resource(service_name: str, stage: Stage, service_type="resource") -> Any:
     """
-    :param service: The name of the service to get, e.g. "dynamodb"
+    :param service_name: The name of the service to get, e.g. "dynamodb"
     :param stage: The stage to get credentials for
+    :param service_type: The type of service to get, either "resource" or "client"
     :return: The service object
     """
-    session: Session = get_session_for_stage(stage)
-    resource: ServiceResource = session.resource(service)
-    return resource
 
+    session: Session = get_session_for_stage(stage)
+    match service_type:
+        case "resource":
+            valid_services = ["dynamodb", "s3", "sqs", "sns", "ssm", "sts"]
+            if service_name not in valid_services:
+                raise ValueError(f"Service name must be one of {valid_services}")
+            # noinspection PyTypeChecker
+            service: ServiceResource = session.resource(service_name)
+        case "client":
+            valid_services = ["ssm", "rds"]
+            if service_name not in valid_services:
+                raise ValueError(f"Service name must be one of {valid_services}")
+            # noinspection PyTypeChecker
+            service: ServiceResource = session.client(service_name)
+        case _:
+            raise ValueError(f"Type must be one of ['resource', 'client']")
+    return service
 
 if __name__ == "__main__":
     # Example usage + For testing
-    generate_aws_resource("dynamodb", Stage.DEVELOPMENT)
+    generate_aws_resource("dynamodb", Stage.BASE_STAGING, "resource")

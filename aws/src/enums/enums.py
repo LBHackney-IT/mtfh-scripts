@@ -2,9 +2,12 @@ from enum import Enum
 
 
 class Stage(Enum):
-    PRODUCTION = "production"
-    STAGING = "staging"
-    DEVELOPMENT = "development"
+    PRODUCTION = HOUSING_PRODUCTION = "housing-production"
+    STAGING = HOUSING_STAGING = "housing-staging"
+    DEVELOPMENT = HOUSING_DEVELOPMENT = "housing-development"
+    BASE_DEVELOPMENT = "base-development"
+    BASE_STAGING = "base-staging"
+    BASE_PRODUCTION = "base-production"
 
 
 class PersonType:
