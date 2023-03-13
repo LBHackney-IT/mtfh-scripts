@@ -1,7 +1,7 @@
 import uuid
 from moto import mock_dynamodb
-from src.utils.csv_to_dict_list import csv_to_dict_list
-from src.database.scripts.asset_table.add_patches_data import update_patches_for_asset
+from aws.src.utils import csv_to_dict_list
+from aws.src.database.dynamodb.scripts.asset_table.add_patches_data import update_patches_for_asset
 import pytest
 
 
