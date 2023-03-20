@@ -11,12 +11,14 @@ PROFILE=base-staging
 # Set the local port to use for the port forwarding - connect to this port on your local machine to connect to the RDS
 LOCAL_PORT = 5432
 
+STAGE := "staging"
+
 # Set the parameter paths for the profile used - as in parameter store, e.g. /service/stage/parameter-name
 JUMP_BOX_INSTANCE_NAME_PATH:="platform-apis-jump-box-instance-name"
-POSTGRES_HOST_PATH:="/uh-api/staging/postgres-hostname"
-POSTGRES_PORT_PATH:="/uh-api/staging/postgres-port"
-POSTGRES_USERNAME_PATH:="/uh-api/staging/postgres-username"
-POSTGRES_PASSWORD_PATH:="/uh-api/staging/postgres-password"
+POSTGRES_HOST_PATH:="/uh-api/${STAGE}/postgres-hostname"
+POSTGRES_PORT_PATH:="/uh-api/${STAGE}/postgres-port"
+POSTGRES_USERNAME_PATH:="/uh-api/${STAGE}/postgres-username"
+POSTGRES_PASSWORD_PATH:="/uh-api/${STAGE}/postgres-password"
 
 
 # -- Parameters --
@@ -36,19 +38,20 @@ REMOTE_USERNAME := $(shell aws ssm get-parameter --name ${POSTGRES_USERNAME_PATH
 # Get the password for the RDS from parameter store for the profile used
 REMOTE_PASSWORD := $(shell aws ssm get-parameter --with-decryption --name ${POSTGRES_PASSWORD_PATH} --region "eu-west-2" --profile ${PROFILE} --query Parameter.Value --output text)
 
+DATABASE_PARAMS := '{"host":["${REMOTE_HOST}"], "portNumber":["${REMOTE_PORT}"], "localPortNumber":["${LOCAL_PORT}"]}'
 
 # -- Commands --
 
-port_forwarding_to_db:
-	# Use this command to connect to the RDS using SSM port forwarding
+port_forwarding_to_jumpbox_for_ca_rds:
+	# Use this command to connect to the jump-box that has access to the RDS using SSM port forwarding
 	# This will allow connecting to the database using a GUI tool like pgAdmin, or with local scripts
 
 	aws ssm start-session \
 		--target ${INSTANCE_ID} \
 		--region eu-west-2 \
 		--profile ${PROFILE} \
-		--document-name AWS-StartPortForwardingSession \
-		--parameters '{"host":["${REMOTE_HOST}"],"portNumber":["${REMOTE_PORT}"], "localPortNumber":["${LOCAL_PORT}"]}'
+		--document-name AWS-StartPortForwardingSessionToRemoteHost \
+		--parameters ${DATABASE_PARAMS}
 
 
 connect_to_db_in_terminal:
@@ -66,4 +69,4 @@ connect_to_db_in_terminal:
 		--profile ${PROFILE};
 
 	# Once connected to the EC2 jump-box instance, this command will connect to the Postgres Database on the RDS instance
-	# You will be prompted for the password
+	# You will be prompted for the password, see above
