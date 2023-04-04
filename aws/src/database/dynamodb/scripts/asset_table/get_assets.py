@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from typing import TextIO, Any
 
 from aws.src.database.dynamodb.domain.domain_objects import Asset
 from aws.src.database.dynamodb.utils.dynamodb_to_csv import dynamodb_to_csv
@@ -22,19 +21,6 @@ class Config:
 
 
 logger = Logger()
-
-
-def write_database_items_to_csv(items: list[Any], outfile: TextIO, headings: list[str]):
-    """
-    :param items: Items to write
-    :param outfile: CSV file to write to
-    :param headings: List of item properties (keys) to write to file as headings, e.g. ["id", "assetId", "patches"]
-    :return:
-    """
-    outfile.write(",".join(Config.HEADING_FILTERS.keys()))
-    csv_rows = [",".join(f",{obj[heading]}" for heading in headings) for obj in items]
-    outfile.writelines(csv_rows)
-
 
 if __name__ == "__main__":
     with open(Config.OUTPUT_DIRECTORY, "w") as outfile:
