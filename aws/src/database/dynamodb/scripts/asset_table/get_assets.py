@@ -13,6 +13,8 @@ class Config:
     LOGGER = Logger()
     STAGE = Stage.HOUSING_DEVELOPMENT
     OUTPUT_DIRECTORY = "../../output"
+    
+    # Put all headings / keys you want to extract from the DynamoDB table here
     HEADING_FILTERS = {
         "id": lambda x: bool(x),
         "assetId": lambda x: bool(x),
