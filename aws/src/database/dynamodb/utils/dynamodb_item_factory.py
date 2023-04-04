@@ -25,7 +25,7 @@ class DynamodbItemFactory:
             self.logger and self.logger.log(f"Scanned {len(scan)} items - last key: {scan['LastEvaluatedKey']}")
             scan = self.table.scan(ExclusiveStartKey=scan["LastEvaluatedKey"])
             raw_items += filter_list_of_dictionaries_by_lambdas(scan["Items"], headings_filters)
-        self.logger and self.logger.log(f"Finished run - scanned {len(scan)} items")
+        self.logger and self.logger.log(f"Finished run - scanned {len(scan['Items'])} items")
         items = []
         for raw_item in raw_items:
             try:
