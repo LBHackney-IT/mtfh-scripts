@@ -2,7 +2,6 @@ from dataclasses import dataclass
 
 from aws.src.database.dynamodb.domain.domain_objects import Asset
 from aws.src.database.dynamodb.utils.dynamodb_to_csv import dynamodb_to_csv
-from aws.src.utils.logger import Logger
 from enums.enums import Stage
 
 
