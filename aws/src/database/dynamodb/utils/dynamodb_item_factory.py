@@ -20,15 +20,20 @@ class DynamodbItemFactory:
             headings_filters = {"id": lambda x: bool(x)}
         scan = self.table.scan()
         raw_items += filter_list_of_dictionaries_by_lambdas(scan["Items"], headings_filters)
-        # while "LastEvaluatedKey" in scan:
-        #     self.logger and self.logger.log(f"Scanned {len(scan)} items - last key: {scan['LastEvaluatedKey']}")
-        #     scan = self.table.scan(ExclusiveStartKey=scan["LastEvaluatedKey"])
-        #     raw_items += filter_list_of_dictionaries_by_lambdas(scan["Items"], headings_filters)
+        while "LastEvaluatedKey" in scan:
+            self.logger and self.logger.log(f"Scanned {len(scan)} items - last key: {scan['LastEvaluatedKey']}")
+            scan = self.table.scan(ExclusiveStartKey=scan["LastEvaluatedKey"])
+            raw_items += filter_list_of_dictionaries_by_lambdas(scan["Items"], headings_filters)
         self.logger and self.logger.log(f"Finished run - scanned {len(scan)} items")
-        try:
-            items = [from_dict(data_class=self.output_class, data=item) for item in raw_items]
-        except dacite.exceptions.MissingValueError as e:
-            raise TypeError(f"Error converting raw items to {self.output_class.__name__} - {e}")
+        items = []
+        for raw_item in raw_items:
+            try:
+                item = from_dict(data_class=self.output_class, data=raw_item)
+                items.append(item)
+            except dacite.exceptions.MissingValueError as e:
+                raise TypeError(f"Error converting raw item to {self.output_class.__name__} - {e}")
+            except dacite.exceptions.WrongTypeError as e:
+                raise TypeError(f"Error converting raw item to {self.output_class.__name__} - {e}")
         return items
 
     def get_item(self, key: str, value: str) -> Any:
@@ -41,5 +46,7 @@ class DynamodbItemFactory:
         try:
             item = from_dict(data_class=self.output_class, data=raw_item)
         except dacite.exceptions.MissingValueError as e:
+            raise TypeError(f"Error converting raw item to {self.output_class.__name__} - {e}")
+        except dacite.exceptions.WrongTypeError as e:
             raise TypeError(f"Error converting raw item to {self.output_class.__name__} - {e}")
         return item
