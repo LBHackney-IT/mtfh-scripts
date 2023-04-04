@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from typing import TextIO, Any
 
 from aws.src.database.dynamodb.domain.domain_objects import Asset
-from aws.src.database.dynamodb.utils import dynamodb_to_csv
+from aws.src.database.dynamodb.utils.dynamodb_to_csv import dynamodb_to_csv
 from aws.src.utils.logger import Logger
 from enums.enums import Stage
 
@@ -41,4 +41,4 @@ if __name__ == "__main__":
         outfile.write("")
 
     # This works, but doesn't give any fine control, could write more generic scripts
-    dynamodb_to_csv("Assets", Config.STAGE, Config.OUTPUT_DIRECTORY, Config.HEADINGS_FILTERS)
+    dynamodb_to_csv("Assets", Config.STAGE, Config.OUTPUT_DIRECTORY, Config.HEADING_FILTERS)
