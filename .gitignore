@@ -9,6 +9,10 @@ venv
 !requirements.txt
 
 *.csv
+*.tsv
 !aws/tests/test_data/*.csv
+!aws/tests/test_data/*.tsv
 
 *.json
+
+config.py
