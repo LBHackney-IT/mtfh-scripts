@@ -10,7 +10,6 @@ from enums.enums import Stage
 class Config:
     TABLE_NAME = "Assets"
     OUTPUT_CLASS = Asset
-    LOGGER = Logger()
     STAGE = Stage.HOUSING_DEVELOPMENT
     OUTPUT_DIRECTORY = "../../output"
     
@@ -20,9 +19,6 @@ class Config:
         "assetId": lambda x: bool(x),
         "patches": lambda x: bool(x),
     }
-
-
-logger = Logger()
 
 if __name__ == "__main__":
     with open(Config.OUTPUT_DIRECTORY, "w") as outfile:
