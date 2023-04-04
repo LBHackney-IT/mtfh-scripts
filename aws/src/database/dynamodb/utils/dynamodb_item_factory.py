@@ -14,13 +14,14 @@ class DynamodbItemFactory:
         self.output_class = output_class
         self.logger = logger
 
-    def full_extract(self, headings_filters: dict[str:Callable]) -> list[Any]:
+    def full_extract(self, headings_filters: dict[str:Callable], item_limit: int = None) -> list[Any]:
         raw_items = []
         if headings_filters is None:
             headings_filters = {"id": lambda x: bool(x)}
         scan = self.table.scan()
         raw_items += filter_list_of_dictionaries_by_lambdas(scan["Items"], headings_filters)
-        while "LastEvaluatedKey" in scan:
+        item_limit_check = len(raw_items) < item_limit if item_limit else True
+        while "LastEvaluatedKey" in scan and item_limit_check:
             self.logger and self.logger.log(f"Scanned {len(scan)} items - last key: {scan['LastEvaluatedKey']}")
             scan = self.table.scan(ExclusiveStartKey=scan["LastEvaluatedKey"])
             raw_items += filter_list_of_dictionaries_by_lambdas(scan["Items"], headings_filters)
