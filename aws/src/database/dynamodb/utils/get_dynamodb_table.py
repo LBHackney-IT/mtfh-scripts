@@ -2,17 +2,22 @@
 # from mypy_boto3_dynamodb.service_resource import Table
 from difflib import get_close_matches
 
-from aws.src.authentication.generate_aws_resource import generate_aws_resource
-from aws.src.enums.enums import Stage
+from mypy_boto3_dynamodb import ServiceResource
+from mypy_boto3_dynamodb.service_resource import Table
+
+from aws.src.authentication.generate_aws_resource import generate_aws_service
+from enums.enums import Stage
 
 
-def get_dynamodb_table(table_name: str, stage: Stage) -> Table:
+def get_dynamodb_table(table_name: str, stage: Stage, db_resource: ServiceResource = None) -> Table:
     """
     :param table_name: Name of the DynamoDB table to connect to (as on AWS)
     :param stage: A valid stage (e.g. Stage.DEVELOPMENT)
+    :param db_resource: A boto3 DynamoDB resource object (optional)
     :return: A boto3 DynamoDB table object
     """
-    db_resource: ServiceResource = generate_aws_resource("dynamodb", stage)
+    if db_resource is None:
+        db_resource: ServiceResource = generate_aws_service("dynamodb", stage)
     dynamo_table: Table = db_resource.Table(table_name)
     try:
         # Check that the table exists
