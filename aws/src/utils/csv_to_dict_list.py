@@ -24,3 +24,13 @@ def csv_to_dict_list(file_path: str) -> list[dict]:
                 pass
 
     return result_list
+
+
+def dict_list_to_csv_rows(dict_list: list[dict], header_row: list[str]) -> list[list[str]]:
+    csv_rows = []
+    for i, dict_item in enumerate(dict_list):
+        csv_row = []
+        for header in header_row:
+            csv_row.append(dict_item[header])
+        csv_rows.append(csv_row)
+    return csv_rows

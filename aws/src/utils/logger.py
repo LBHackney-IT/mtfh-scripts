@@ -7,6 +7,7 @@ class Logger:
         self.log_file_name = "logs" if log_file_name is None else log_file_name
         self.log_file_dir = "logs" if log_file_dir is None else log_file_dir
         self.log_file = f"{self.log_file_dir}/{self.log_file_name}.txt"
+        print(f"Log file: {self.log_file}")
 
     def log(self, message: str, end="\n"):
         """
@@ -20,3 +21,12 @@ class Logger:
         with open(self.log_file, "a") as outfile:
             print(message, file=outfile, end=end)
         print(message, end=end)
+
+
+def logger_wrapper(func):
+    def wrapper(*args, **kwargs):
+        logger = Logger()
+        logger.log(f"Running {func.__name__}")
+        return func(*args, **kwargs)
+
+    return wrapper
