@@ -7,11 +7,12 @@
 
 # Set the AWS profile to use for these connections - should match a profile in your .aws/config file
 PROFILE=base-staging
+# Set the corresponding stage, to be used for parameter store variable name paths
+STAGE := staging
 
 # Set the local port to use for the port forwarding - connect to this port on your local machine to connect to the RDS
 LOCAL_PORT = 5432
 
-STAGE := "staging"
 
 # Set the parameter paths for the profile used - as in parameter store, e.g. /service/stage/parameter-name
 JUMP_BOX_INSTANCE_NAME_PATH:="platform-apis-jump-box-instance-name"
@@ -22,20 +23,11 @@ POSTGRES_PASSWORD_PATH:="/uh-api/${STAGE}/postgres-password"
 
 
 # -- Parameters --
-
-# Get the EC2 jump-box instance ID for the RDS from parameter store for the profile used
+# Get parameters from parameter store for the profile used
 INSTANCE_ID := $(shell aws ssm get-parameter --name ${JUMP_BOX_INSTANCE_NAME_PATH} --region "eu-west-2" --profile ${PROFILE} --query Parameter.Value --output text)
-
-# Get the host URL for the RDS from parameter store for the profile used
 REMOTE_HOST := $(shell aws ssm get-parameter --name ${POSTGRES_HOST_PATH} --region "eu-west-2" --profile ${PROFILE} --query Parameter.Value --output text)
-
-# Get the port for the RDS from parameter store for the profile used
 REMOTE_PORT := $(shell aws ssm get-parameter --name ${POSTGRES_PORT_PATH} --region "eu-west-2" --profile ${PROFILE} --query Parameter.Value --output text)
-
-# Get the username for the RDS from parameter store for the profile used
 REMOTE_USERNAME := $(shell aws ssm get-parameter --name ${POSTGRES_USERNAME_PATH} --region "eu-west-2" --profile ${PROFILE} --query Parameter.Value --output text)
-
-# Get the password for the RDS from parameter store for the profile used
 REMOTE_PASSWORD := $(shell aws ssm get-parameter --with-decryption --name ${POSTGRES_PASSWORD_PATH} --region "eu-west-2" --profile ${PROFILE} --query Parameter.Value --output text)
 
 DATABASE_PARAMS := '{"host":["${REMOTE_HOST}"], "portNumber":["${REMOTE_PORT}"], "localPortNumber":["${LOCAL_PORT}"]}'
@@ -45,6 +37,8 @@ DATABASE_PARAMS := '{"host":["${REMOTE_HOST}"], "portNumber":["${REMOTE_PORT}"],
 port_forwarding_to_jumpbox_for_ca_rds:
 	# Use this command to connect to the jump-box that has access to the RDS using SSM port forwarding
 	# This will allow connecting to the database using a GUI tool like pgAdmin, or with local scripts
+
+	echo PASSWORD: ${REMOTE_PASSWORD}
 
 	aws ssm start-session \
 		--target ${INSTANCE_ID} \
