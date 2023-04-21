@@ -1,0 +1,50 @@
+@startuml
+left to right direction
+
+package DynamoDB {
+
+  class Asset #lightblue {
+    id
+    assetId
+    tenure
+  }
+
+    class Tenure #lightgreen {
+      id
+      householdMembers
+      tenuredAsset
+    }
+
+   class Person #pink {
+    id
+    tenures
+  }
+
+
+}
+
+
+package UH_Database {
+
+  class CautionaryAlert {
+     mmhId
+    propertyReference
+  }
+
+}
+
+
+Asset::tenure -[#blue]-> Tenure::id
+Asset::assetId -[#blue]- CautionaryAlert::propertyReference
+
+Tenure::householdMembers -[#green]-> Person::id
+Tenure::householdMembers -[#green]- CautionaryAlert::mmhId
+Tenure::tenuredAsset -[#green]-> Asset::id
+Tenure::tenuredAsset -[#green]- CautionaryAlert::propertyReference
+
+Person::tenures -[#red]-> Tenure::id
+Person::tenures -[#red]-> Asset::id
+Person::tenures -[#red]- CautionaryAlert::propertyReference
+Person::id -[#red]- CautionaryAlert::mmhId
+
+@enduml

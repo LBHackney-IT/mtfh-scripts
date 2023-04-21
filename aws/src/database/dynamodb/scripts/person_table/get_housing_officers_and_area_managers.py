@@ -1,13 +1,12 @@
 from dataclasses import dataclass
 
-from src.database.utils.dynamodb_to_csv import dynamodb_to_csv
-from src.enums.enums import Stage
-from src.utils.logger import Logger
+from aws.src.database.dynamodb.utils.dynamodb_to_csv import dynamodb_to_tsv
+from enums.enums import Stage
 
 
 @dataclass
 class Config:
-    STAGE = Stage.DEVELOPMENT
+    STAGE = Stage.HOUSING_DEVELOPMENT
     OUTPUT_DIRECTORY = "../../output"
     HEADINGS_FILTERS = {
         "id": lambda x: bool(x),
@@ -17,7 +16,5 @@ class Config:
     }
 
 
-logger = Logger()
-
-if __name__ == "__main__":
-    dynamodb_to_csv("Persons", Config.STAGE, Config.OUTPUT_DIRECTORY, Config.HEADINGS_FILTERS)
+def main():
+    dynamodb_to_tsv("Persons", Config.STAGE, Config.OUTPUT_DIRECTORY, Config.HEADINGS_FILTERS)

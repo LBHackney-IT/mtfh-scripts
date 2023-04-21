@@ -1,3 +1,4 @@
+import re
 from typing import Any, Callable
 
 import dacite.exceptions
@@ -9,35 +10,62 @@ from aws.src.utils.logger import Logger
 
 
 class DynamodbItemFactory:
-    def __init__(self, table: Table, output_class: Any, logger: Logger = None):
+    def __init__(self, table: Table, output_class: Any = None, logger: Logger = None):
+        """
+        A class to extract items from a DynamoDB table, and convert them to a dataclass
+        :param table: DynamoDB table object to extract from
+        :param output_class: Dataclass to convert items to
+        :param logger: Logger object to log to
+        """
         self.table = table
         self.output_class = output_class
-        self.logger = logger
+        self.logger = logger or Logger()
 
-    def full_extract(self, headings_filters: dict[str:Callable], item_limit: int = None) -> list[Any]:
-        raw_items = []
-        if headings_filters is None:
-            headings_filters = {"id": lambda x: bool(x)}
-        scan = self.table.scan()
-        raw_items += filter_list_of_dictionaries_by_lambdas(scan["Items"], headings_filters)
-        item_limit_check = len(raw_items) < item_limit if item_limit else True
-        while "LastEvaluatedKey" in scan and item_limit_check:
-            self.logger and self.logger.log(f"Scanned {len(scan)} items - last key: {scan['LastEvaluatedKey']}")
-            scan = self.table.scan(ExclusiveStartKey=scan["LastEvaluatedKey"])
-            raw_items += filter_list_of_dictionaries_by_lambdas(scan["Items"], headings_filters)
-        self.logger and self.logger.log(f"Finished run - scanned {len(scan['Items'])} items")
+    def full_extract(self, headings_filters: dict[str:Callable] = None, item_limit: int = None) -> list[Any]:
+        """
+        Extracts all items from a DynamoDB table, and converts them to the output class if specified.
+        Logs all headings in the table.
+        :param headings_filters: Dictionary of filters to apply to the headings. Keys are the heading names, values are the filters to apply
+        :param item_limit: Will not continue extracting items if this limit is reached
+        :return:
+        """
+
+        def _convert_item_to_output_class(self, raw_item: dict) -> Any:
+            converted_item = None
+            for _ in range(2):
+                # Try to convert the item to the output class. If it fails, try to add default values for missing fields
+                try:
+                    converted_item = from_dict(data_class=self.output_class, data=raw_item)
+                    return converted_item
+                except dacite.exceptions.MissingValueError as e:
+                    missing_value = re.search(r'missing value for field "(.*)"', str(e)).group(1)
+                    asset_attributes = {attribute_name: attribute for attribute_name, attribute in
+                                        self.output_class.__annotations__.items()}
+                    raw_item[missing_value] = asset_attributes[missing_value]()
+                except dacite.exceptions.WrongTypeError as e:
+                    raise TypeError(
+                        f"WrongTypeError converting item with keys {list(raw_item.keys())} to {self.output_class.__name__} - {e}")
+            raise TypeError(
+                f"Could not convert item with keys {list(raw_item.keys())} to {self.output_class.__name__}")
+
+        headings_filters = {} if headings_filters is None else headings_filters
+        raw_items = self._get_all_items(headings_filters, item_limit)
+        self._write_table_headings(raw_items, item_limit)
+        if self.output_class is None:
+            return raw_items
         items = []
         for raw_item in raw_items:
-            try:
-                item = from_dict(data_class=self.output_class, data=raw_item)
-                items.append(item)
-            except dacite.exceptions.MissingValueError as e:
-                raise TypeError(f"Error converting raw item to {self.output_class.__name__} - {e}")
-            except dacite.exceptions.WrongTypeError as e:
-                raise TypeError(f"Error converting raw item to {self.output_class.__name__} - {e}")
+            item = _convert_item_to_output_class(self, raw_item)
+            items.append(item)
         return items
 
     def get_item(self, key: str, value: str) -> Any:
+        """
+        Gets a single item from the table, and converts it to the output class if specified
+        :param key: Primary key of the item to get
+        :param value: Value of the primary key
+        :return:
+        """
         response = self.table.get_item(Key={key: value})
         try:
             raw_item = response["Item"]
@@ -51,3 +79,38 @@ class DynamodbItemFactory:
         except dacite.exceptions.WrongTypeError as e:
             raise TypeError(f"Error converting raw item to {self.output_class.__name__} - {e}")
         return item
+
+    def _get_all_items(self, headings_filters: dict[str:Callable] = None, item_limit: int = None):
+        raw_items = []
+        if headings_filters is None:
+            headings_filters = {}
+        scan = self.table.scan()
+        raw_items += filter_list_of_dictionaries_by_lambdas(scan["Items"], headings_filters)
+        item_limit_check = len(raw_items) < item_limit if item_limit else True
+        while "LastEvaluatedKey" in scan and item_limit_check:
+            self.logger.log(f"Scanned {len(scan)} items - last key: {scan['LastEvaluatedKey']}")
+            scan = self.table.scan(ExclusiveStartKey=scan["LastEvaluatedKey"])
+            raw_items += filter_list_of_dictionaries_by_lambdas(scan["Items"], headings_filters)
+        self.logger.log(f"Finished run - extracted {len(raw_items)} items")
+        return raw_items
+
+    def _write_table_headings(self, raw_items: list[dict] = None, item_limit: int = None):
+        """
+        Writes all headings in the table to the log
+        :param raw_items: List of raw items (from DB export) to extract headings from
+        :param item_limit: Limit on number of items to extract
+        """
+        if raw_items is None:
+            raw_items = self._get_all_items(item_limit=item_limit)
+        headings: dict[str:str] = {}
+        for raw_item in raw_items:
+            item_headings = set(raw_item.keys())
+            for item_heading in item_headings:
+                if item_heading not in headings.keys():
+                    headings[item_heading] = type(raw_item[item_heading]).__name__
+        self.logger.log(f"Table headings: {headings}")
+
+        if self.output_class:
+            unused_heading_keys = set(headings.keys()) - set(self.output_class.__annotations__.keys())
+            unused_headings = {key: headings[key] for key in unused_heading_keys}
+            self.logger.log(f"Unused headings in class {self.output_class.__name__}: {unused_headings}")

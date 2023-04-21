@@ -93,7 +93,7 @@ def main():
         "mismatch_details"  # List of mismatched fields
     ]
 
-    _file_path = "../data/cautionary-alerts.csv"
+    _file_path = "../data/cautionary_alerts.csv"
     alert_csv_data = csv_to_dict_list(_file_path)
 
     dynamo_resource: ServiceResource = generate_aws_service("dynamodb", STAGE)

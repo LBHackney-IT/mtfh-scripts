@@ -1,21 +1,13 @@
-from typing import Any
-
 import boto3
 import botocore.exceptions
 from boto3 import Session
 from boto3.resources.base import ServiceResource
+from typing import Any
 
 from enums.enums import Stage
 
 
 def get_session_for_stage(stage: Stage | str) -> Session:
-    """
-    Set up your credentials in ~/.aws/credentials before use \n
-    You can do this with the aws cli by running `aws configure --profile <stage>`
-    You may need to manually modify the session token in this file when it expires
-    :param stage: one of the stages in the Stage enum
-    :return: the credentials for the given stage
-    """
     try:
         stage_profile = stage.value.lower()
     except AttributeError:
@@ -34,7 +26,7 @@ def get_session_for_stage(stage: Stage | str) -> Session:
             break
         except botocore.exceptions.ProfileNotFound:
             input(f"Couldn't find stage {stage_profile} in your awscli credentials file.\n"
-                  f">> Please run `aws sso configure` and set up profile {stage_profile} to set up your credentials."
+                  f">> Please run `aws configure sso` and set up profile {stage_profile} to set up your credentials."
                   f"Hit enter to try again")
         except botocore.exceptions.ClientError:
             # Thrown when profile manually configured in ~/.aws/credentials
@@ -44,7 +36,12 @@ def get_session_for_stage(stage: Stage | str) -> Session:
         except botocore.exceptions.TokenRetrievalError:
             # Thrown when using SSO and credentials have expired
             input(f"\nInvalid or expired credentials for profile {stage_profile}.\n"
-                  f"Run `aws sso login --profile {stage_profile}` to refresh.\n"
+                  f"aws sso login --profile {stage_profile}; || - Run to refresh.\n"
+                  f"Hit enter to try again")
+        except botocore.exceptions.NoRegionError:
+            # Thrown when there is no region configured for the profile
+            input(f"\nNo region configured for profile {stage_profile}.\n"
+                  f"Set a default region in your .aws/config file for the {stage_profile} profile.\n"
                   f"Hit enter to try again")
     return session
 

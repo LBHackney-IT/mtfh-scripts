@@ -1,17 +1,16 @@
 from pathlib import Path
 
 from boto3.dynamodb.table import BatchWriter
-from mypy_boto3_dynamodb.service_resource import Table
 
-from aws.src.enums.enums import Stage
-from aws.src.utils.csv_to_dict_list import csv_to_dict_list
 from aws.src.database.dynamodb.utils.get_dynamodb_table import get_dynamodb_table
+from aws.src.utils.csv_to_dict_list import csv_to_dict_list
 from aws.src.utils.logger import Logger
 from aws.src.utils.progress_bar import ProgressBar
+from enums.enums import Stage
 
 
 class Config:
-    STAGE = Stage.DEVELOPMENT
+    STAGE = Stage.HOUSING_DEVELOPMENT
     WORKDIR = Path(__file__).parent  # gets current directory *even when run as module*
     CSV_FILE = f"{WORKDIR}/input/Person-Patch-{str(STAGE).title()}.csv"  # e.g. Person-Patch-Development.csv
     LOG_FILE = f"{WORKDIR}/logs/logs.txt"
@@ -53,12 +52,16 @@ def update_patches_for_asset(asset: dict, person_patch_map: list[dict], dynamo_t
     return update_count
 
 
-def main(asset_dynamo_table: Table):
+def main():
     """
     Updates patch data for all assets
     :param asset_dynamo_table: DynamoDB table object
     :return:
     """
+    continue_confirm = input(f"Running in {Config.STAGE}, continue? y/n: ")
+    Config.LOGGER.log_file_name = f"{Config.STAGE}_add_patches_data.log"
+    asset_dynamo_table = get_dynamodb_table(table_name="Assets", stage=Config.STAGE)
+
     logger = Config.LOGGER
     scan = asset_dynamo_table.scan(Limit=1000)
     table_item_count = asset_dynamo_table.item_count
@@ -88,10 +91,3 @@ def main(asset_dynamo_table: Table):
             else:
                 logger.log(f"\nFINAL TOTAL: {total_count} items processed, {updated_count} updated\n")
                 break
-
-
-if __name__ == "__main__":
-    continue_confirm = input(f"Running in {Config.STAGE}, continue? y/n: ")
-    Config.LOGGER.log_file_name = f"{Config.STAGE}_add_patches_data.log"
-    table = get_dynamodb_table(table_name="Assets", stage=Config.STAGE)
-    main(table)
