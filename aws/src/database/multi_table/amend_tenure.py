@@ -12,18 +12,15 @@ from enums.enums import Stage
 STAGE = Stage.HOUSING_PRODUCTION
 STAGE_PARAM = "production"  # Stage parameter for SSM
 ES_EXTENSION = "tenures"
-TENURE_TABLE_NAME = "TenureInformation"
-PERSONS_TABLE_NAME = "Persons"
+_update_date = datetime(day=31, month=1, year=2022).isoformat()
+NEW_PARAM_VALUE = _update_date  # _update_date
 
-with open("input/elasticsearch_query_tenure.py", "r") as outfile:
-    ES_QUERY_CMD = outfile.read()
-
+# For modifying start/end dates of a tenure
 TENURE_ID = input("Enter a tenure ID to update: ").strip()  # Do not hardcode this
-PARAM_KEY_ES = "endOfTenureDate"  # "startOfTenureDate"
+PARAM_KEY_ES = "startOfTenureDate"  # "startOfTenureDate" or "endOfTenureDate"
 PARAM_KEY_DYNAMO_TENURE = PARAM_KEY_ES
+PARAM_KEY_DYNAMO_ASSET = PARAM_KEY_ES
 PARAM_KEY_DYNAMO_PERSON = "startDate" if PARAM_KEY_ES == "startOfTenureDate" else "endDate"
-_update_date = datetime(day=17, month=4, year=2023).isoformat()
-NEW_PARAM_VALUE = None  # _update_date
 
 # Parameter store paths
 _ES_DOMAIN_PARAM_PATH = f"/housing-search-api/{STAGE_PARAM}/elasticsearch-domain"
@@ -34,9 +31,6 @@ ssm_client = generate_aws_service("ssm", STAGE, "client")
 ES_DOMAIN = ssm_client.get_parameter(Name=_ES_DOMAIN_PARAM_PATH)["Parameter"]["Value"]
 INSTANCE_ID = ssm_client.get_parameter(Name=_JUMP_BOX_INSTANCE_NAME_PATH)["Parameter"]["Value"]
 
-TENURE_TABLE: Table = generate_aws_service("dynamodb", STAGE, "resource").Table(TENURE_TABLE_NAME)
-PERSONS_TABLE: Table = generate_aws_service("dynamodb", STAGE, "resource").Table(PERSONS_TABLE_NAME)
-
 ELASTICSEARCH_UPDATE_OBJ = json.dumps(
     {
         "doc": {
@@ -44,6 +38,25 @@ ELASTICSEARCH_UPDATE_OBJ = json.dumps(
         }
     }
 )
+
+PROPERTY_TABLE_NAME = "Assets"
+TENURE_TABLE_NAME = "TenureInformation"
+PERSONS_TABLE_NAME = "Persons"
+
+with open("input/elasticsearch_query_tenure.py", "r") as outfile:
+    ES_QUERY_CMD = outfile.read()
+
+
+def main():
+    print("== Update ==")
+    print(f"Tenure ID: {TENURE_ID}")
+    print(f"Param key: {PARAM_KEY_ES}")
+    print(f"New value: {NEW_PARAM_VALUE}")
+    tenure = get_tenure_dynamodb()
+    # update_elasticsearch()
+    # update_tenure_dynamodb(tenure)
+    update_property_dynamodb(tenure)
+    # update_person_dynamodb(tenure)
 
 
 def update_elasticsearch(
@@ -74,32 +87,61 @@ def update_elasticsearch(
     print(f"Elasticsearch updated! Verify with: \n{curl_query}")
 
 
-def update_tenure_dynamodb(tenure_table: Table = TENURE_TABLE, primary_key=TENURE_ID) -> dict:
+def get_tenure_dynamodb(primary_key=TENURE_ID) -> dict:
+    tenure_table: Table = generate_aws_service("dynamodb", STAGE, "resource").Table(TENURE_TABLE_NAME)
     tenure_item: dict = tenure_table.get_item(Key={"id": primary_key})["Item"]
+    tenure_item[PARAM_KEY_DYNAMO_TENURE] = NEW_PARAM_VALUE
 
+    return tenure_item
+
+
+def update_tenure_dynamodb(tenure_item: dict):
+    tenure_table: Table = generate_aws_service("dynamodb", STAGE, "resource").Table(TENURE_TABLE_NAME)
     print("\n== DynamoDB Item ==")
     pprint(tenure_item)
     print("== DynamoDB Item ==")
     print(f"Pending Update: {PARAM_KEY_DYNAMO_TENURE}: {tenure_item[PARAM_KEY_DYNAMO_TENURE]} -> {NEW_PARAM_VALUE}")
 
-    tenure_item[PARAM_KEY_DYNAMO_TENURE] = NEW_PARAM_VALUE
-
     _confirm("Confirm updating this tenure?")
 
+    tenure_id = tenure_item["id"]
     tenure_table.update_item(
-        Key={"id": primary_key},
+        Key={"id": tenure_id},
         UpdateExpression=f"set {PARAM_KEY_DYNAMO_TENURE} = :r",
         ExpressionAttributeValues={
             ":r": NEW_PARAM_VALUE
         },
         ReturnValues="UPDATED_NEW"
     )
-    print("Updated Tenure on DynamoDB!")
-
-    return tenure_item
 
 
-def update_person_dynamodb(tenure_item: dict, persons_table: Table = PERSONS_TABLE):
+def update_property_dynamodb(tenure_item: dict):
+    asset_table: Table = generate_aws_service("dynamodb", STAGE, "resource").Table(PROPERTY_TABLE_NAME)
+    property_id: str = tenure_item["tenuredAsset"]["id"]
+    property_item: dict = asset_table.get_item(Key={"id": property_id})["Item"]
+    property_tenure = property_item["tenure"]
+
+    pprint(property_item["id"])
+    pprint(property_item["assetAddress"]["addressLine1"])
+    pprint(property_tenure)
+    print(f"Pending Update: tenure {PARAM_KEY_DYNAMO_ASSET}: "
+          f"{property_item.get(PARAM_KEY_DYNAMO_ASSET)} -> {NEW_PARAM_VALUE}")
+
+    _confirm(f"Confirm updating this property's tenure {PARAM_KEY_DYNAMO_ASSET}?")
+
+    property_tenure[PARAM_KEY_DYNAMO_ASSET] = NEW_PARAM_VALUE
+    asset_table.update_item(
+        Key={"id": property_id},
+        UpdateExpression=f"SET tenure = :r",
+        ExpressionAttributeValues={
+            ":r": property_tenure
+        },
+        ReturnValues="UPDATED_NEW"
+    )
+
+
+def update_person_dynamodb(tenure_item: dict):
+    persons_table: Table = generate_aws_service("dynamodb", STAGE, "resource").Table(PERSONS_TABLE_NAME)
     tenure_id = tenure_item["id"]
 
     household_members: list[dict] = tenure_item["householdMembers"]
@@ -124,7 +166,7 @@ def update_person_dynamodb(tenure_item: dict, persons_table: Table = PERSONS_TAB
                 f"Pending Update: tenure {PARAM_KEY_DYNAMO_PERSON}: {tenure.get(PARAM_KEY_DYNAMO_PERSON)} -> {NEW_PARAM_VALUE}")
             person_tenures[i][PARAM_KEY_DYNAMO_PERSON] = NEW_PARAM_VALUE
 
-    _confirm("Confirm updating this tenure?")
+    _confirm(f"Confirm updating this person's tenure {PARAM_KEY_DYNAMO_PERSON}?")
 
     persons_table.update_item(
         Key={"id": tenure_person['id']},
@@ -143,7 +185,5 @@ def _confirm(question):
         exit()
 
 
-def main():
-    update_elasticsearch()
-    tenure_item = update_tenure_dynamodb()
-    update_person_dynamodb(tenure_item)
+if __name__ == "__main__":
+    main()
