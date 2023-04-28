@@ -3,14 +3,15 @@
 # Requires AWS CLI Profile matching housing-${ENVIRONMENT} to be set up
 # Requires AWS Session Manager Plugin to be installed:
 # 	https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-install-plugin.html
+# On Windows you will need to run these commands using Git Bash, NOT Powershell / CMD
 
 # -- Configuration --
 # Local port to connect to on your machine
 LOCAL_PORT = 1433
 # For Parameter store URL Paths
-ENVIRONMENT = "development"
+ENVIRONMENT = development
 # Set to AWSCLI Profile name
-PROFILE = "housing-${ENVIRONMENT}"
+PROFILE = housing-${ENVIRONMENT}
 
 # -- Parameter Store paths --
 INSTANCE_ID_PATH := "/platform-apis-jump-box-instance-name"
@@ -34,11 +35,10 @@ main:
 	make reset
 	make port-forwarding-to-hfs-db
 
+# Use this command to login to the AWS SSO service
+# This will open a browser window to login to the AWS SSO service
+# This is required to use the ssm commands
 sso_login:
-	# Use this command to login to the AWS SSO service
-	# This will open a browser window to login to the AWS SSO service
-	# This is required to use the ssm commands
-
 	if (aws sts get-caller-identity --profile ${PROFILE})
 	then
 		echo "Session still valid"
@@ -48,8 +48,8 @@ sso_login:
 	fi
 
 port_forwarding_to_hfs_db:
-	@echo "Connecting to ${DB_ENDPOINT} on local port ${LOCAL_PORT}\n===\nUsername: ${DB_USERNAME}\nPassword: ${DB_PASSWORD}\n==="
-	@aws ssm start-session \
+	echo "Connecting to ${DB_ENDPOINT} on local port ${LOCAL_PORT}\n===\nUsername: ${DB_USERNAME}\nPassword: ${DB_PASSWORD}\n==="
+	aws ssm start-session \
 		--target ${INSTANCE_ID} \
 		--region=eu-west-2  \
 		--profile=${PROFILE} \
