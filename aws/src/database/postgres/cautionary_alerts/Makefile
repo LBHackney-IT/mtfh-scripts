@@ -31,11 +31,6 @@ REMOTE_PASSWORD := $(shell aws ssm get-parameter --with-decryption --name ${POST
 DATABASE_PARAMS = '{"host":["${REMOTE_HOST}"], "portNumber":["${REMOTE_PORT}"], "localPortNumber":["${LOCAL_PORT}"]}'
 
 # -- Commands --
-main:
-	make sso_login
-	make reset
-	make port_forwarding_to_uh_db
-
 
 # Use this command to login to the AWS SSO service
 # This will open a browser window to login to the AWS SSO service
