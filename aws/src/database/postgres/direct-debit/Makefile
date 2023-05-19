@@ -14,7 +14,14 @@ ENVIRONMENT = development
 PROFILE = housing-${ENVIRONMENT}
 
 # -- Parameter Store paths --
-INSTANCE_ID_PATH := "/housing-finance/${ENVIRONMENT}/instance-id"
+ifeq (${ENVIRONMENT}, development)
+	INSTANCE_ID_PATH := "/housing-finance/${ENVIRONMENT}/instance-id"
+else ifeq (${ENVIRONMENT}, staging)
+ 	# There is currently no /housing-finance/staging/instance-id parameter
+	INSTANCE_ID_PATH := "/platform-apis-jump-box-instance-name"
+else ifeq (${ENVIRONMENT}, production)
+	INSTANCE_ID_PATH := "/platform-apis-jump-box-instance-name"
+endif
 REMOTE_PORT_PATH := "/housing-finance/${ENVIRONMENT}/postgres-port"
 DB_ENDPOINT_PATH := "/housing-finance/${ENVIRONMENT}/postgres-hostname"
 DB_USERNAME_PATH := "/housing-finance/${ENVIRONMENT}/postgres-username"
