@@ -9,7 +9,7 @@
 # Set the local port to use for the port forwarding - connect to this port on your local machine to connect to the RDS
 LOCAL_PORT = 5432
 # For Parameter store URL Paths
-STAGE := staging
+STAGE := production
 # Set to AWSCLI Profile name
 PROFILE := "base-${STAGE}"
 
@@ -48,6 +48,7 @@ sso_login:
 # This will allow connecting to the database using a GUI tool like pgAdmin, or with local scripts
 # NOTE: On Windows you may need to run this command in a Git Bash terminal - run the `make port_forwarding_to_uh_db` and copy it from there
 port_forwarding_to_uh_db:
+	echo USERNAME: ${REMOTE_USERNAME}
 	echo PASSWORD: ${REMOTE_PASSWORD}
 
 	aws ssm start-session \
