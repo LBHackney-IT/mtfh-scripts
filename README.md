@@ -6,7 +6,7 @@ Scripts for use within Modern Tools For Housing
 
 These Python commands may be different depending on your OS and how you installed Python.
 
-Try `python` instead of `python3` if you get "command not found".
+**Try `python` instead of `python3` if you get "command not found".**
 
 ## Requirements
 

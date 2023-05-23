@@ -90,3 +90,4 @@ class Asset:
     rootAsset: str | None
     tenure: AssetTenure | None
     versionNumber: Decimal | None
+    numberOfBedSpaces: str | None
