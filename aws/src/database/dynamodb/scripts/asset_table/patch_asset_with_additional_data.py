@@ -51,8 +51,8 @@ def update_assets_with_additional_data(asset_table: Table, assets_from_csv: list
         
         dynamo_asset = asset_table.get_item(Key={"id": asset_pk}).get("Item")
 
-        dynamo_asset["assetCharacteristics"]["numberOfBedrooms"] = no_of_bedrooms if verify_number(no_of_bedrooms) else None
-        dynamo_asset["assetCharacteristics"]["yearConstructed"] = year_built if verify_number(year_built) else None
+        dynamo_asset["assetCharacteristics"]["numberOfBedrooms"] = no_of_bedrooms if verify_number(no_of_bedrooms) else dynamo_asset["assetCharacteristics"].get("numberOfBedrooms")
+        dynamo_asset["assetCharacteristics"]["yearConstructed"] = year_built if verify_number(year_built) else dynamo_asset["assetCharacteristics"].get("yearConstructed")
         
         asset_table.put_item(Item=dynamo_asset)
         update_count += 1
