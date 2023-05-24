@@ -1,11 +1,9 @@
-from dataclasses import dataclass
-from typing import get_type_hints
 import re
+from dataclasses import dataclass
 
 from mypy_boto3_dynamodb.service_resource import Table
 
 from aws.src.database.domain.dynamo_domain_objects import Asset
-from aws.src.database.dynamodb.utils.dynamodb_item_factory import DynamodbItemFactory
 from aws.src.database.dynamodb.utils.get_by_secondary_index import get_by_secondary_index
 from aws.src.database.dynamodb.utils.get_dynamodb_table import get_dynamodb_table
 from aws.src.utils.csv_to_dict_list import csv_to_dict_list
@@ -25,6 +23,7 @@ class Config:
     }
     ITEM_COUNT_LIMIT = 10  # Set to None to return all items
 
+
 def clean_asset_id(asset_id: str) -> str | None:
     asset_id = str(asset_id)
     asset_id = asset_id.replace(" ", "")
@@ -38,6 +37,7 @@ def clean_asset_id(asset_id: str) -> str | None:
         asset_id = propref_regex.findall(asset_id)[0]
         return asset_id
     return None
+
 
 def set_id_in_csv_with_asset_id(asset_table: Table, assets_from_csv: list[dict]) -> list[dict]:
     """
@@ -65,8 +65,9 @@ def set_id_in_csv_with_asset_id(asset_table: Table, assets_from_csv: list[dict])
             continue
         asset = results[0]
         assets_from_csv[i]["Id"] = asset.get("id")
-        
+
     return assets_from_csv
+
 
 def main():
     table = get_dynamodb_table(Config.TABLE_NAME, Config.STAGE)
