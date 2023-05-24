@@ -9,34 +9,8 @@
 # from aws.src.database.multi_table.find_persons_for_properties import main as find_persons_for_properties_main
 
 
-# def get_assets_dynamodb():
-#     get_assets_dynamodb_main()
-
-
-# def add_patches_data_dynamodb():
-#     add_patches_data_dynamodb_main()
-
-
-# def get_housing_officers_and_area_managers():
-#     get_housing_officers_and_area_managers_main()
-
-
-# def find_persons_for_properties():
-#     find_persons_for_properties_main()
-
-
-# def amend_tenure():
-#     amend_tenure_main()
-    
-# def get_assets_by_prop_ref():
-#     get_assets_by_prop_ref_main()
-
-# def patch_asset_with_additional_data():
-#     patch_asset_with_additional_data_main()
-
-
 if __name__ == "__main__":
-    # 1) IMPORTANT: Click into functions above to view definitions and edit config
+    # 1) IMPORTANT: Uncomment and click into functions in the imports to view definitions and edit config
     #     - e.g. set STAGE to "development" or "production"
     # 2) Call functions here
     pass
