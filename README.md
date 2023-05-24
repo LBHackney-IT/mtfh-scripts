@@ -30,9 +30,11 @@ Try `python` instead of `python3` if you get "command not found".
 ## Setup / AWS
 
 Install the [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2.html) -
-you need to set your AWS credentials to be read by the AWS client in your `.aws/credentials` folder.
+the scripts use AWS CLI profile based authentication to make calls to AWS.
 
-You can follow these steps multiple times to set up different profiles for different AWS accounts.
+You'll need a recent version of the AWS CLI to make connections to databases via port forwarding as this is a new feature.
+
+You can follow these steps multiple times to set up different profiles for different AWS accounts:
 
 1. Go to the Google SSO AWS start page and select "Command line or programmatic access" for the account needed.
 2. Note the steps under **AWS IAM Identity Center credentials (Recommended)** and use those details below.
