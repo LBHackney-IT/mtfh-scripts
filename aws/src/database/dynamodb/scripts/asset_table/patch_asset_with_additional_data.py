@@ -26,14 +26,14 @@ class Config:
 
 def verify_number(number: str|int) -> bool:
     """
-    Verify if the string is a valid number
+    Verify if the input is a valid integer
     """
     if isinstance(number, int):
         return True
-    if not number:
+    elif isinstance(number, str) and number.isdigit():
+        return True
+    else:
         return False
-    match = re.match(r"^\d+$", number)
-    return bool(match)
 
 def update_assets_with_additional_data(asset_table: Table, assets_from_csv: list[dict]) -> int:
     """
