@@ -45,33 +45,34 @@ def set_id_in_csv_with_asset_id(asset_table: Table, assets_from_csv: list[dict])
     :return: ****TO UPDATE*** A dictionary containing the updated assets and the assets that failed to update
     """
     progress_bar = ProgressBar(len(assets_from_csv), bar_length=len(assets_from_csv) // 10)
+    
     for i, asset_item in enumerate(assets_from_csv):
-        if i % 10 == 0:
-            progress_bar.display(i)
-        asset_id = asset_item["Property Reference Number"]
-        asset_id = clean_asset_id(asset_id)
-        if asset_id is None:
-            asset_item["failed_reason"] = f"Invalid assetId: {asset_item['Property Reference Number']}. " \
-                                          f"Asset Address: {asset_item['Estate Name']}"
+        if isinstance(asset_item["property_pk"], str) and len(asset_item["property_pk"]) > 0:
             continue
-        results = get_by_secondary_index(asset_table, "AssetId", "assetId", asset_id)
-        if len(results) > 1:
-            asset_item["failed_reason"] = f"Multiple assets found for assetId {asset_item['Property Reference Number']}. " \
-                                          f"Asset Address: {asset_item['Estate Name']}"
-            continue
-        elif len(results) == 0:
-            asset_item["failed_reason"] = f"No assets found for assetId {asset_item['Property Reference Number']}. " \
-                                          f"Asset Address: {asset_item['Estate Name']}"
-            continue
-        asset = results[0]
-        assets_from_csv[i]["Id"] = asset.get("id")
+        else:
+            if i % 10 == 0:
+                progress_bar.display(i)
+            asset_id = asset_item["prop_ref"]
+            asset_id = clean_asset_id(asset_id)
+            if asset_id is None:
+                asset_item["failed_reason"] = f"Invalid assetId: {asset_item['prop_ref']}. " 
+                continue
+            results = get_by_secondary_index(asset_table, "AssetId", "assetId", asset_id)
+            if len(results) > 1:
+                asset_item["failed_reason"] = f"Multiple assets found for assetId {asset_item['prop_ref']}. " 
+                continue
+            elif len(results) == 0:
+                asset_item["failed_reason"] = f"No assets found for assetId {asset_item['prop_ref']}. "
+                continue
+            asset = results[0]
+            assets_from_csv[i]["property_pk"] = asset.get("id")
 
     return assets_from_csv
 
 
 def main():
     table = get_dynamodb_table(Config.TABLE_NAME, Config.STAGE)
-    _file_path = "aws\src\database\data\input\ProdAdditionalAssetData.csv"
+    _file_path = "aws\src\database\data\input\ProdUpdateAssetDataWithId.csv"
     asset_csv_data = csv_to_dict_list(_file_path)
 
     # Note: Writing to TSV which can be imported into Google Sheets
