@@ -15,10 +15,10 @@ PROFILE := "base-${STAGE}"
 
 # -- Parameter Store paths --
 JUMP_BOX_INSTANCE_NAME_PATH:="platform-apis-jump-box-instance-name"
-POSTGRES_HOST_PATH:="/uh-api/${STAGE}/postgres-hostname"
-POSTGRES_PORT_PATH:="/uh-api/${STAGE}/postgres-port"
-POSTGRES_USERNAME_PATH:="/uh-api/${STAGE}/postgres-username"
-POSTGRES_PASSWORD_PATH:="/uh-api/${STAGE}/postgres-password"
+POSTGRES_HOST_PATH:=" /uh-api/${STAGE}/postgres-hostname"
+POSTGRES_PORT_PATH:=" /uh-api/${STAGE}/postgres-port"
+POSTGRES_USERNAME_PATH:=" /uh-api/${STAGE}/postgres-username"
+POSTGRES_PASSWORD_PATH:=" /uh-api/${STAGE}/postgres-password"
 
 # -- Parameters --
 # Get parameters from parameter store for the profile used
