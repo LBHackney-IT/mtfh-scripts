@@ -17,7 +17,7 @@ class Config:
     TABLE_NAME = "Assets"
     OUTPUT_CLASS = Asset
     LOGGER = Logger()
-    STAGE = Stage.HOUSING_PRODUCTION
+    STAGE = Stage.HOUSING_STAGING
     HEADING_FILTERS = {
         "id": lambda x: bool(x),
     }
