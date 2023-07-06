@@ -1,8 +1,9 @@
+import datetime
 import json
-from datetime import datetime
 from pprint import pprint
 
 import pyperclip
+from dateutil import parser
 from mypy_boto3_dynamodb.service_resource import Table
 
 from aws.src.authentication.generate_aws_resource import generate_aws_service
@@ -11,17 +12,23 @@ from enums.enums import Stage
 # Config - change these
 STAGE = Stage.HOUSING_PRODUCTION
 STAGE_PARAM = "production"  # Stage parameter for SSM
-_update_date = datetime(day=3, month=7, year=2023).isoformat()
-NEW_PARAM_VALUE = _update_date  # _update_date
 
 # For modifying start/end dates of a tenure
-PARAM_KEY_ES = "startOfTenureDate"  # "startOfTenureDate" or "endOfTenureDate"
-TENURE_ID = input("Enter a tenure ID to update: ").strip()  # Do not hardcode this
+TENURE_ID = input(f"{STAGE_PARAM.upper()} tenure ID to update: ").strip()  # Do not hardcode this
+
+PARAM_KEY_ES = ""
+while PARAM_KEY_ES not in ["startOfTenureDate", "endOfTenureDate"]:
+    start_or_end = input("Update start (s) or end (e) date for tenure?").strip().lower()
+    if start_or_end in ["s", "start"]:
+        PARAM_KEY_ES = "startOfTenureDate"
+    if start_or_end in ["e", "end"]:
+        PARAM_KEY_ES = "endOfTenureDate"
+
+UPDATE_DATE = parser.parse(timestr=input("Enter a date: ").strip(),
+                           parserinfo=parser.parserinfo(dayfirst=True)).isoformat()
 PARAM_KEY_DYNAMO_TENURE = PARAM_KEY_ES
 PARAM_KEY_DYNAMO_ASSET = PARAM_KEY_ES
 PARAM_KEY_DYNAMO_PERSON = "startDate" if PARAM_KEY_ES == "startOfTenureDate" else "endDate"
-
-assert PARAM_KEY_ES in ["startOfTenureDate", "endOfTenureDate"], "Invalid PARAM_KEY_ES"
 
 # Parameter store paths
 _ES_DOMAIN_PARAM_PATH = f"/housing-search-api/{STAGE_PARAM}/elasticsearch-domain"
@@ -32,14 +39,6 @@ ssm_client = generate_aws_service("ssm", STAGE, "client")
 ES_DOMAIN = ssm_client.get_parameter(Name=_ES_DOMAIN_PARAM_PATH)["Parameter"]["Value"]
 INSTANCE_ID = ssm_client.get_parameter(Name=_JUMP_BOX_INSTANCE_NAME_PATH)["Parameter"]["Value"]
 
-ELASTICSEARCH_UPDATE_OBJ = json.dumps(
-    {
-        "doc": {
-            PARAM_KEY_ES: NEW_PARAM_VALUE
-        }
-    }
-)
-
 PROPERTY_TABLE_NAME = "Assets"
 TENURE_TABLE_NAME = "TenureInformation"
 PERSONS_TABLE_NAME = "Persons"
@@ -49,12 +48,12 @@ def main():
     print("\n== Update ==")
     print(f"Tenure ID: {TENURE_ID}")
     print(f"Param key: {PARAM_KEY_ES}")
-    print(f"New value: {NEW_PARAM_VALUE}")
+    print(f"New value: {UPDATE_DATE}")
     _confirm("Correct?")
     tenure = get_tenure_dynamodb(TENURE_ID)
     connect_to_jumpbox_for_es(instance_id=INSTANCE_ID, stage=STAGE.value)
     # update_tenure_elasticsearch(tenure_pk=TENURE_ID)
-    update_property_elasticsearch(property_pk=tenure["tenuredAsset"]["id"])
+    # update_property_elasticsearch(property_pk=tenure["tenuredAsset"]["id"])
     # update_tenure_dynamodb(tenure)
     # update_property_dynamodb(tenure)
     # update_persons_dynamodb(tenure)
@@ -101,7 +100,7 @@ def update_tenure_elasticsearch(tenure_pk=TENURE_ID):
     update_obj = json.dumps(
         {
             "doc": {
-                PARAM_KEY_ES: NEW_PARAM_VALUE
+                PARAM_KEY_ES: UPDATE_DATE
             }
         }
     )
@@ -116,7 +115,7 @@ def update_property_elasticsearch(property_pk):
         {
             "doc": {
                 "tenure": {
-                    PARAM_KEY_ES: NEW_PARAM_VALUE
+                    PARAM_KEY_ES: UPDATE_DATE
                 }
             }
         }
@@ -128,7 +127,7 @@ def update_property_elasticsearch(property_pk):
 def get_tenure_dynamodb(primary_key=TENURE_ID) -> dict:
     tenure_table: Table = generate_aws_service("dynamodb", STAGE, "resource").Table(TENURE_TABLE_NAME)
     tenure_item: dict = tenure_table.get_item(Key={"id": primary_key})["Item"]
-    tenure_item[PARAM_KEY_DYNAMO_TENURE] = NEW_PARAM_VALUE
+    tenure_item[PARAM_KEY_DYNAMO_TENURE] = UPDATE_DATE
 
     return tenure_item
 
@@ -138,7 +137,7 @@ def update_tenure_dynamodb(tenure_item: dict):
     print("\n== DynamoDB Item ==")
     pprint(tenure_item)
     print("== DynamoDB Item ==")
-    print(f"Pending Update: {PARAM_KEY_DYNAMO_TENURE}: {tenure_item[PARAM_KEY_DYNAMO_TENURE]} -> {NEW_PARAM_VALUE}")
+    print(f"Pending Update: {PARAM_KEY_DYNAMO_TENURE}: {tenure_item[PARAM_KEY_DYNAMO_TENURE]} -> {UPDATE_DATE}")
 
     _confirm("Confirm updating this tenure?")
 
@@ -147,7 +146,7 @@ def update_tenure_dynamodb(tenure_item: dict):
         Key={"id": tenure_id},
         UpdateExpression=f"set {PARAM_KEY_DYNAMO_TENURE} = :r",
         ExpressionAttributeValues={
-            ":r": NEW_PARAM_VALUE
+            ":r": UPDATE_DATE
         },
         ReturnValues="UPDATED_NEW"
     )
@@ -163,11 +162,11 @@ def update_property_dynamodb(tenure_item: dict):
     pprint(property_item["assetAddress"]["addressLine1"])
     pprint(property_tenure)
     print(f"Pending Update: tenure {PARAM_KEY_DYNAMO_ASSET}: "
-          f"{property_item['tenure'].get(PARAM_KEY_DYNAMO_ASSET)} -> {NEW_PARAM_VALUE}")
+          f"{property_item['tenure'].get(PARAM_KEY_DYNAMO_ASSET)} -> {UPDATE_DATE}")
 
     _confirm(f"Confirm updating this property's tenure {PARAM_KEY_DYNAMO_ASSET}?")
 
-    property_tenure[PARAM_KEY_DYNAMO_ASSET] = NEW_PARAM_VALUE
+    property_tenure[PARAM_KEY_DYNAMO_ASSET] = UPDATE_DATE
     asset_table.update_item(
         Key={"id": property_id},
         UpdateExpression=f"SET tenure = :r",
@@ -197,9 +196,9 @@ def update_persons_dynamodb(tenure_item: dict):
                 print("== DynamoDB Item ==")
                 print(
                     f"Pending Update: tenure {PARAM_KEY_DYNAMO_PERSON}: "
-                    f"{tenure.get(PARAM_KEY_DYNAMO_PERSON).split('T')[0]} -> {NEW_PARAM_VALUE.split('T')[0]}"
+                    f"{tenure.get(PARAM_KEY_DYNAMO_PERSON).split('T')[0]} -> {UPDATE_DATE.split('T')[0]}"
                 )
-                person_tenures[i][PARAM_KEY_DYNAMO_PERSON] = NEW_PARAM_VALUE.split('T')[0]
+                person_tenures[i][PARAM_KEY_DYNAMO_PERSON] = UPDATE_DATE.split('T')[0]
                 print(tenure['assetFullAddress'])
         print(f"Update tenure for person {tenure_person['id']}, {tenure_person['fullName']}?")
 
