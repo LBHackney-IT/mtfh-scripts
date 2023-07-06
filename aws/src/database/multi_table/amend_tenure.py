@@ -202,23 +202,26 @@ def update_persons_dynamodb(tenure_item: dict):
                 person_tenures[i][PARAM_KEY_DYNAMO_PERSON] = NEW_PARAM_VALUE.split('T')[0]
                 print(tenure['assetFullAddress'])
         print(f"Update tenure for person {tenure_person['id']}, {tenure_person['fullName']}?")
-        _confirm(f"Confirm updating this person's tenure {PARAM_KEY_DYNAMO_PERSON}?")
 
-        persons_table.update_item(
-            Key={"id": tenure_person['id']},
-            UpdateExpression=f"set tenures = :r",
-            ExpressionAttributeValues={
-                ":r": person_tenures
-            },
-            ReturnValues="UPDATED_NEW"
-        )
+        if _confirm(f"Confirm updating this person's tenure {PARAM_KEY_DYNAMO_PERSON}?", kill=False):
+            persons_table.update_item(
+                Key={"id": tenure_person['id']},
+                UpdateExpression=f"set tenures = :r",
+                ExpressionAttributeValues={
+                    ":r": person_tenures
+                },
+                ReturnValues="UPDATED_NEW"
+            )
 
 
-def _confirm(question):
-    confirm = input(f"{question} (y/n): ")
-    if confirm.lower() not in ["y", "yes"]:
+def _confirm(question: str, kill=True):
+    confirm = input(f"{question} (y/n): ").lower() not in ["y", "yes"]
+    if confirm and kill:
         print("Exiting")
         exit()
+    if confirm:  # No kill / exit
+        return False
+    return True
 
 
 if __name__ == "__main__":
