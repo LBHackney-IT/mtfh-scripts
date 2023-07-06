@@ -10,15 +10,15 @@ from aws.src.authentication.generate_aws_resource import generate_aws_service
 from enums.enums import Stage
 
 # Config - change these
-STAGE = Stage.HOUSING_PRODUCTION
-STAGE_PARAM = "production"  # Stage parameter for SSM
+STAGE = Stage.HOUSING_STAGING
+STAGE_PARAM = "staging"  # Stage parameter for SSM
 
 # For modifying start/end dates of a tenure
 TENURE_ID = input(f"{STAGE_PARAM.upper()} tenure ID to update: ").strip()  # Do not hardcode this
 
 PARAM_KEY_ES = ""
 while PARAM_KEY_ES not in ["startOfTenureDate", "endOfTenureDate"]:
-    start_or_end = input("Update start (s) or end (e) date for tenure?").strip().lower()
+    start_or_end = input("Update start (s) or end (e) date for tenure? ").strip().lower()
     if start_or_end in ["s", "start"]:
         PARAM_KEY_ES = "startOfTenureDate"
     if start_or_end in ["e", "end"]:
@@ -51,12 +51,16 @@ def main():
     print(f"New value: {UPDATE_DATE}")
     _confirm("Correct?")
     tenure = get_tenure_dynamodb(TENURE_ID)
-    connect_to_jumpbox_for_es(instance_id=INSTANCE_ID, stage=STAGE.value)
-    # update_tenure_elasticsearch(tenure_pk=TENURE_ID)
-    # update_property_elasticsearch(property_pk=tenure["tenuredAsset"]["id"])
-    # update_tenure_dynamodb(tenure)
-    # update_property_dynamodb(tenure)
-    # update_persons_dynamodb(tenure)
+    update_es = _confirm(f"Update {STAGE.value} Elasticsearch?", kill=False)
+    if update_es:
+        connect_to_jumpbox_for_es(instance_id=INSTANCE_ID, stage=STAGE.value)
+        update_tenure_elasticsearch(tenure_pk=TENURE_ID)
+        update_property_elasticsearch(property_pk=tenure["tenuredAsset"]["id"])
+    update_dynamodb = _confirm(f"Update {STAGE.value} DynamoDB?", kill=False)
+    if update_dynamodb:
+        update_tenure_dynamodb(tenure)
+        update_property_dynamodb(tenure)
+        update_persons_dynamodb(tenure)
 
 
 def connect_to_jumpbox_for_es(instance_id=INSTANCE_ID, stage=STAGE.value):
