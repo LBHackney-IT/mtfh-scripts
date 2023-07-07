@@ -1,4 +1,3 @@
-import datetime
 import json
 from pprint import pprint
 
@@ -24,8 +23,12 @@ while PARAM_KEY_ES not in ["startOfTenureDate", "endOfTenureDate"]:
     if start_or_end in ["e", "end"]:
         PARAM_KEY_ES = "endOfTenureDate"
 
-UPDATE_DATE = parser.parse(timestr=input("Enter a date (e.g. DD/MM/YYYY or YYYY-MM-DD): ").strip(),
-                           parserinfo=parser.parserinfo(dayfirst=True)).isoformat()
+_update_date = input("Enter a date (e.g. DD/MM/YYYY or YYYY-MM-DD) or enter n or null to unset: ").strip()
+if _update_date.lower() in ["n", "null"]:
+    UPDATE_DATE = None
+    print("Unsetting date")
+else:
+    UPDATE_DATE = parser.parse(timestr=_update_date, parserinfo=parser.parserinfo(dayfirst=True)).isoformat()
 PARAM_KEY_DYNAMO_TENURE = PARAM_KEY_ES
 PARAM_KEY_DYNAMO_ASSET = PARAM_KEY_ES
 PARAM_KEY_DYNAMO_PERSON = "startDate" if PARAM_KEY_ES == "startOfTenureDate" else "endDate"
@@ -203,9 +206,9 @@ def update_persons_dynamodb(tenure_item: dict):
                 print("== DynamoDB Item ==")
                 print(
                     f"Pending Update: tenure {PARAM_KEY_DYNAMO_PERSON}: "
-                    f"{tenure.get(PARAM_KEY_DYNAMO_PERSON).split('T')[0]} -> {UPDATE_DATE.split('T')[0]}"
+                    f"{str(tenure.get(PARAM_KEY_DYNAMO_PERSON)).split('T')[0]} -> {str(UPDATE_DATE).split('T')[0]}"
                 )
-                person_tenures[i][PARAM_KEY_DYNAMO_PERSON] = UPDATE_DATE.split('T')[0]
+                person_tenures[i][PARAM_KEY_DYNAMO_PERSON] = str(UPDATE_DATE).split('T')[0]
                 print(tenure['assetFullAddress'])
         print(f"Update tenure for person {tenure_person['id']}, {tenure_person['fullName']}?")
 
