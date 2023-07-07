@@ -55,6 +55,7 @@ def main():
     _confirm("Correct?")
 
     tenure = get_tenure_dynamodb(TENURE_ID)
+    original_date = tenure[PARAM_KEY_DYNAMO_TENURE]
 
     update_dynamodb = _confirm(f"Update {STAGE.value} DynamoDB?", kill=False)
     if update_dynamodb:
@@ -67,6 +68,23 @@ def main():
         connect_to_jumpbox_for_es(instance_id=INSTANCE_ID, stage=STAGE.value)
         update_tenure_elasticsearch(tenure_pk=TENURE_ID)
         update_property_elasticsearch(property_pk=tenure["tenuredAsset"]["id"])
+
+    final_message(tenure, original_date)
+
+
+def final_message(tenure: dict[str, str | None], original_date: str | None):
+    human_date = parser.parse(timestr=original_date).strftime("%d/%m/%Y") if original_date is not None else "no date"
+    human_update_date = parser.parse(timestr=UPDATE_DATE).strftime("%d/%m/%Y") if UPDATE_DATE is not None else "no date"
+    human_start_or_end = "start date" if PARAM_KEY_ES == "startOfTenureDate" else "end date"
+    print(
+        f"===\n"
+        f"The tenure TPR {tenure['paymentReference']}'s {human_start_or_end} has been updated "
+        f"from {human_date} to {human_update_date}.\n"
+        f"https://manage-my-home.hackney.gov.uk/tenure/{tenure['id']}\n\n"
+        f"You may need to clear your browser cache (all time) to see the changes immediately, see here for info:"
+        f" https://support.google.com/accounts/answer/32050\n"
+        f"Please respond to reopen the case if you notice any issues."
+    )
 
 
 def connect_to_jumpbox_for_es(instance_id=INSTANCE_ID, stage=STAGE.value):
@@ -137,8 +155,6 @@ def update_property_elasticsearch(property_pk):
 def get_tenure_dynamodb(primary_key=TENURE_ID) -> dict:
     tenure_table: Table = generate_aws_service("dynamodb", STAGE, "resource").Table(TENURE_TABLE_NAME)
     tenure_item: dict = tenure_table.get_item(Key={"id": primary_key})["Item"]
-    tenure_item[PARAM_KEY_DYNAMO_TENURE] = UPDATE_DATE
-
     return tenure_item
 
 
@@ -149,16 +165,16 @@ def update_tenure_dynamodb(tenure_item: dict):
     print("== DynamoDB Item ==")
     print(f"Pending Update: {PARAM_KEY_DYNAMO_TENURE}: {tenure_item[PARAM_KEY_DYNAMO_TENURE]} -> {UPDATE_DATE}")
 
-    _confirm("Confirm updating this tenure?")
+    if not _confirm("Confirm updating this tenure?", kill=False):
+        print("Tenure not updated.")
+        return
 
     tenure_id = tenure_item["id"]
     tenure_table.update_item(
         Key={"id": tenure_id},
         UpdateExpression=f"set {PARAM_KEY_DYNAMO_TENURE} = :r",
-        ExpressionAttributeValues={
-            ":r": UPDATE_DATE
-        },
-        ReturnValues="UPDATED_NEW"
+        ExpressionAttributeValues={":r": UPDATE_DATE},
+        ReturnValues="UPDATED_NEW",
     )
 
 
@@ -174,16 +190,16 @@ def update_property_dynamodb(tenure_item: dict):
     print(f"Pending Update: tenure {PARAM_KEY_DYNAMO_ASSET}: "
           f"{property_item['tenure'].get(PARAM_KEY_DYNAMO_ASSET)} -> {UPDATE_DATE}")
 
-    _confirm(f"Confirm updating this property's tenure {PARAM_KEY_DYNAMO_ASSET}?")
+    if not _confirm(f"Confirm updating this property's tenure {PARAM_KEY_DYNAMO_ASSET}?", kill=False):
+        print("Tenure not updated.")
+        return
 
     property_tenure[PARAM_KEY_DYNAMO_ASSET] = UPDATE_DATE
     asset_table.update_item(
         Key={"id": property_id},
         UpdateExpression=f"SET tenure = :r",
-        ExpressionAttributeValues={
-            ":r": property_tenure
-        },
-        ReturnValues="UPDATED_NEW"
+        ExpressionAttributeValues={":r": property_tenure},
+        ReturnValues="UPDATED_NEW",
     )
 
 
@@ -206,20 +222,18 @@ def update_persons_dynamodb(tenure_item: dict):
                 print("== DynamoDB Item ==")
                 print(
                     f"Pending Update: tenure {PARAM_KEY_DYNAMO_PERSON}: "
-                    f"{str(tenure.get(PARAM_KEY_DYNAMO_PERSON)).split('T')[0]} -> {str(UPDATE_DATE).split('T')[0]}"
+                    f"{tenure.get(PARAM_KEY_DYNAMO_PERSON).split('T')[0]} -> {UPDATE_DATE.split('T')[0]}"
                 )
-                person_tenures[i][PARAM_KEY_DYNAMO_PERSON] = str(UPDATE_DATE).split('T')[0]
-                print(tenure['assetFullAddress'])
+                person_tenures[i][PARAM_KEY_DYNAMO_PERSON] = str(UPDATE_DATE).split("T")[0]
+                print(tenure["assetFullAddress"])
         print(f"Update tenure for person {tenure_person['id']}, {tenure_person['fullName']}?")
 
         if _confirm(f"Confirm updating this person's tenure {PARAM_KEY_DYNAMO_PERSON}?", kill=False):
             persons_table.update_item(
-                Key={"id": tenure_person['id']},
+                Key={"id": tenure_person["id"]},
                 UpdateExpression=f"set tenures = :r",
-                ExpressionAttributeValues={
-                    ":r": person_tenures
-                },
-                ReturnValues="UPDATED_NEW"
+                ExpressionAttributeValues={":r": person_tenures},
+                ReturnValues="UPDATED_NEW",
             )
 
 
