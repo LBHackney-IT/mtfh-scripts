@@ -50,17 +50,20 @@ def main():
     print(f"Param key: {PARAM_KEY_ES}")
     print(f"New value: {UPDATE_DATE}")
     _confirm("Correct?")
+    
     tenure = get_tenure_dynamodb(TENURE_ID)
-    update_es = _confirm(f"Update {STAGE.value} Elasticsearch?", kill=False)
-    if update_es:
-        connect_to_jumpbox_for_es(instance_id=INSTANCE_ID, stage=STAGE.value)
-        update_tenure_elasticsearch(tenure_pk=TENURE_ID)
-        update_property_elasticsearch(property_pk=tenure["tenuredAsset"]["id"])
+
     update_dynamodb = _confirm(f"Update {STAGE.value} DynamoDB?", kill=False)
     if update_dynamodb:
         update_tenure_dynamodb(tenure)
         update_property_dynamodb(tenure)
         update_persons_dynamodb(tenure)
+
+    update_es = _confirm(f"Update {STAGE.value} Elasticsearch?", kill=False)
+    if update_es:
+        connect_to_jumpbox_for_es(instance_id=INSTANCE_ID, stage=STAGE.value)
+        update_tenure_elasticsearch(tenure_pk=TENURE_ID)
+        update_property_elasticsearch(property_pk=tenure["tenuredAsset"]["id"])
 
 
 def connect_to_jumpbox_for_es(instance_id=INSTANCE_ID, stage=STAGE.value):
