@@ -24,7 +24,7 @@ while PARAM_KEY_ES not in ["startOfTenureDate", "endOfTenureDate"]:
     if start_or_end in ["e", "end"]:
         PARAM_KEY_ES = "endOfTenureDate"
 
-UPDATE_DATE = parser.parse(timestr=input("Enter a date: ").strip(),
+UPDATE_DATE = parser.parse(timestr=input("Enter a date (e.g. DD/MM/YYYY or YYYY-MM-DD): ").strip(),
                            parserinfo=parser.parserinfo(dayfirst=True)).isoformat()
 PARAM_KEY_DYNAMO_TENURE = PARAM_KEY_ES
 PARAM_KEY_DYNAMO_ASSET = PARAM_KEY_ES
@@ -50,7 +50,7 @@ def main():
     print(f"Param key: {PARAM_KEY_ES}")
     print(f"New value: {UPDATE_DATE}")
     _confirm("Correct?")
-    
+
     tenure = get_tenure_dynamodb(TENURE_ID)
 
     update_dynamodb = _confirm(f"Update {STAGE.value} DynamoDB?", kill=False)
