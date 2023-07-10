@@ -9,16 +9,14 @@ from aws.src.utils.logger import Logger
 from aws.src.utils.progress_bar import ProgressBar
 from enums.enums import Stage
 from decimal import Decimal
-import json
-
 
 
 @dataclass
 class Config:
     TABLE_NAME = "Assets"
     LOGGER = Logger()
-    STAGE = Stage.HOUSING_PRODUCTION
-    FILE_PATH = "aws/src/database/data/input/AdditionalAssetDataProd.csv"
+    STAGE = Stage.HOUSING_STAGING
+    FILE_PATH = "aws/src/database/data/input/AdditionalAssetDataStaging.csv"
     HEADING_FILTERS = {
         "id": lambda x: bool(x),
     }
