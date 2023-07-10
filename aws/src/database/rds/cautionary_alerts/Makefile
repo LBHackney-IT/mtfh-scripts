@@ -9,16 +9,16 @@
 # Set the local port to use for the port forwarding - connect to this port on your local machine to connect to the RDS
 LOCAL_PORT = 5432
 # For Parameter store URL Paths
-STAGE := production
+STAGE := staging
 # Set to AWSCLI Profile name
 PROFILE := "base-${STAGE}"
 
 # -- Parameter Store paths --
 JUMP_BOX_INSTANCE_NAME_PATH:="platform-apis-jump-box-instance-name"
-POSTGRES_HOST_PATH:="/uh-api/${STAGE}/postgres-hostname"
-POSTGRES_PORT_PATH:="/uh-api/${STAGE}/postgres-port"
-POSTGRES_USERNAME_PATH:="/uh-api/${STAGE}/postgres-username"
-POSTGRES_PASSWORD_PATH:="/uh-api/${STAGE}/postgres-password"
+POSTGRES_HOST_PATH:=" /uh-api/${STAGE}/postgres-hostname"
+POSTGRES_PORT_PATH:=" /uh-api/${STAGE}/postgres-port"
+POSTGRES_USERNAME_PATH:=" /uh-api/${STAGE}/postgres-username"
+POSTGRES_PASSWORD_PATH:=" /uh-api/${STAGE}/postgres-password"
 
 # -- Parameters --
 # Get parameters from parameter store for the profile used
