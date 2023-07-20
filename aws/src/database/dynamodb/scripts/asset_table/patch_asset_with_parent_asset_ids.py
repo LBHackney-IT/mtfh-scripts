@@ -14,7 +14,7 @@ class Config:
     TABLE_NAME = "Assets"
     LOGGER = Logger()
     STAGE = Stage.HOUSING_DEVELOPMENT
-    FILE_PATH = "aws/src/database/data/input/dwelling_hierarchy_upload_2.csv.csv"
+    FILE_PATH = "aws/src/database/data/input/dwelling_hierarchy_upload_2.csv"
     HEADING_FILTERS = {
         "id": lambda x: bool(x),
     }
