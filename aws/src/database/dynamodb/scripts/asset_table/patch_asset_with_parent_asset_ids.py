@@ -45,7 +45,7 @@ def update_assets_with_parents_data(asset_table: Table, assets_from_csv: list[di
         if parent_asset_prop_ref == "Hackney":
             parent_asset_guid = "656feda1-896f-b136-da84-163ee4f1be6c"
 
-        # Otherwise, if the value is not "Hackney", find the 
+        # Otherwise, if the value is not "Hackney", we need to find the record
         else:
             # If AssetId is less than 8 digits, left pad it with 0s until AssetId is composed of 8 digits
                 if len(parent_asset_prop_ref) < 8:
