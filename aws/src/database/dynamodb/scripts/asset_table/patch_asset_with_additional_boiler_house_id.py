@@ -15,13 +15,11 @@ from decimal import Decimal
 class Config:
     TABLE_NAME = "Assets"
     LOGGER = Logger()
-    STAGE = Stage.HOUSING_DEVELOPMENT
+    STAGE = Stage.HOUSING_STAGING
     FILE_PATH = "aws\src\database\data\input\\boiler_house_data.csv"
     HEADING_FILTERS = {
         "id": lambda x: bool(x),
     }
-
-# lkj[dsafklpjsdzfkljdfsklj]
 
 def update_assets_with_additional_data(asset_table: Table, assets_from_csv: list[dict]) -> int:
     update_count = 0
