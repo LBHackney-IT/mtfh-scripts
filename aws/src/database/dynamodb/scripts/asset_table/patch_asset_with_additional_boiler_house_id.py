@@ -32,12 +32,10 @@ def update_assets_with_additional_data(asset_table: Table, assets_from_csv: list
         boiler_house_prop_ref = str(csv_asset_item["boiler"])
 
         # 1. Get asset from dynamoDb
-        record_from_db = get_by_secondary_index(asset_table, "AssetId", "assetId", prop_ref)
-        asset = record_from_db[0]
+        asset = get_by_secondary_index(asset_table, "AssetId", "assetId", prop_ref)[0]
 
         # 2. Get assetGuid for boilerHouse
-        record_from_db = get_by_secondary_index(asset_table, "AssetId", "assetId", boiler_house_prop_ref)
-        boilerHouseGuidPk = record_from_db[0]['id']
+        boilerHouseGuidPk = get_by_secondary_index(asset_table, "AssetId", "assetId", boiler_house_prop_ref)[0]['id']
 
         # 3. Add boilerHouseId to asset object
         asset["boilerHouseId"] = boilerHouseGuidPk
