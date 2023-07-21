@@ -15,7 +15,7 @@ from decimal import Decimal
 class Config:
     TABLE_NAME = "Assets"
     LOGGER = Logger()
-    STAGE = Stage.HOUSING_STAGING
+    STAGE = Stage.HOUSING_PRODUCTION
     FILE_PATH = "aws\src\database\data\input\\boiler_house_data.csv"
     HEADING_FILTERS = {
         "id": lambda x: bool(x),
