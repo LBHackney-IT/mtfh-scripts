@@ -23,6 +23,8 @@ def update_assets_with_parents_data(asset_table: Table, assets_from_csv: list[di
     update_count = 0
     progress_bar = ProgressBar(len(assets_from_csv), bar_length=len(assets_from_csv) // 10)
 
+    # The arrays below will be used to display lists of assets that could not be
+    # modified by the script (asset not found in DynamoDb).
     no_asset_found_children = []
     no_asset_found_parents = []
 
@@ -82,8 +84,8 @@ def update_assets_with_parents_data(asset_table: Table, assets_from_csv: list[di
             no_asset_found_children.append(child_asset_prop_ref)
             print('Cannot find (child) asset for Asset ID', child_asset_prop_ref)
             
-    print("SCRIPT FINISHED. CANNOT FIND ASSET (CHILD)", no_asset_found_children)
-    print("SCRIPT FINISHED. CANNOT FIND ASSET (PARENT)", no_asset_found_parents)
+    print("Script completed. Any child asset not found will be in the following array:", no_asset_found_children)
+    print("Script completed. Any parent asset not found will be in the following array:", no_asset_found_parents)
     return update_count
 
 
