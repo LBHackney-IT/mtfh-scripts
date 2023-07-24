@@ -22,7 +22,10 @@ class Config:
 def update_assets_with_parents_data(asset_table: Table, assets_from_csv: list[dict]) -> int:
     update_count = 0
     progress_bar = ProgressBar(len(assets_from_csv), bar_length=len(assets_from_csv) // 10)
-    for i, csv_asset_item in enumerate(assets_from_csv):
+
+    unchanged_items = []
+
+    for i, csv_asset_item in enumerate(assets_from_csv):        
         if i % 100 == 0:
             progress_bar.display(i)
 
@@ -34,35 +37,45 @@ def update_assets_with_parents_data(asset_table: Table, assets_from_csv: list[di
             child_asset_prop_ref = child_asset_prop_ref.rjust(8, '0')
 
         # Get asset object, using the AssetId, from DynamoDb
-        child_asset_record = get_by_secondary_index(asset_table, "AssetId", "assetId", child_asset_prop_ref)[0]
+        data_retrieve = get_by_secondary_index(asset_table, "AssetId", "assetId", child_asset_prop_ref)
 
-        # NOW WE HAVE THE CHILD ASSET OBJECT
+        if (len(data_retrieve) > 0): 
+            child_asset_record = data_retrieve[0]
 
-        # Get the parent from the CSV file for the asset
-        parent_asset_prop_ref = str(csv_asset_item["parent"])
+            # NOW WE HAVE THE CHILD ASSET OBJECT
 
-        # If the value is "Hackney" and not a valid AssetId, we use the Hackney Home GUID (656feda1-896f-b136-da84-163ee4f1be6c)
-        if parent_asset_prop_ref == "Hackney":
-            parent_asset_guid = "656feda1-896f-b136-da84-163ee4f1be6c"
+            # Get the parent from the CSV file for the asset
+            parent_asset_prop_ref = str(csv_asset_item["parent"])
 
-        # Otherwise, if the value is not "Hackney", we need to find the record
+            # If the value is "Hackney" and not a valid AssetId, we use the Hackney Home GUID (656feda1-896f-b136-da84-163ee4f1be6c)
+            if parent_asset_prop_ref == "Hackney":
+                parent_asset_guid = "656feda1-896f-b136-da84-163ee4f1be6c"
+
+            # Otherwise, if the value is not "Hackney", we need to find the record
+            else:
+                # If AssetId is less than 8 digits, left pad it with 0s until AssetId is composed of 8 digits
+                    if len(parent_asset_prop_ref) < 8:
+                        parent_asset_prop_ref = parent_asset_prop_ref.rjust(8, '0')
+
+                    # Get asset object, using the AssetId, from DynamoDb, for the parent asset
+                    parent_asset_guid = get_by_secondary_index(asset_table, "AssetId", "assetId", parent_asset_prop_ref)[0]['id']
+
+            # NOW WE HAVE THE GUID FOR THE PARENT ASSET (whether this is HackneyHomes or not)
+
+            # Now we set "parentAssetIds" field of the child asset record to the value of parent_asset_guid
+            child_asset_record["parentAssetIds"] = parent_asset_guid
+
+            # SAVE THE EDITED ASSET RECORD
+            asset_table.put_item(Item=child_asset_record)
+            
+            update_count += 1
         else:
-            # If AssetId is less than 8 digits, left pad it with 0s until AssetId is composed of 8 digits
-                if len(parent_asset_prop_ref) < 8:
-                    parent_asset_prop_ref = parent_asset_prop_ref.rjust(8, '0')
-
-                # Get asset object, using the AssetId, from DynamoDb, for the parent asset
-                parent_asset_guid = get_by_secondary_index(asset_table, "AssetId", "assetId", parent_asset_prop_ref)[0]['id']
-
-        # NOW WE HAVE THE GUID FOR THE PARENT ASSET (whether this is HackneyHomes or not)
-
-        # Now we set "parentAssetIds" field of the child asset record to the value of parent_asset_guid
-        child_asset_record["parentAssetIds"] = parent_asset_guid
-
-        # SAVE THE EDITED ASSET RECORD
-        asset_table.put_item(Item=child_asset_record)
-        
-        update_count += 1
+            unchanged_items.append(i)
+            print('Item')
+            print("Length of retrieved data", len(data_retrieve))
+            print('Broken item', i)
+            
+    print("SCRIPT FINISHED. UNCHANGED ITEMS", unchanged_items)
     return update_count
 
 
