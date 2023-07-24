@@ -23,7 +23,8 @@ def update_assets_with_parents_data(asset_table: Table, assets_from_csv: list[di
     update_count = 0
     progress_bar = ProgressBar(len(assets_from_csv), bar_length=len(assets_from_csv) // 10)
 
-    unchanged_items = []
+    no_asset_found_children = []
+    no_asset_found_parents = []
 
     for i, csv_asset_item in enumerate(assets_from_csv):        
         if i % 100 == 0:
@@ -37,10 +38,10 @@ def update_assets_with_parents_data(asset_table: Table, assets_from_csv: list[di
             child_asset_prop_ref = child_asset_prop_ref.rjust(8, '0')
 
         # Get asset object, using the AssetId, from DynamoDb
-        data_retrieve = get_by_secondary_index(asset_table, "AssetId", "assetId", child_asset_prop_ref)
+        data_retrieve_child = get_by_secondary_index(asset_table, "AssetId", "assetId", child_asset_prop_ref)
 
-        if (len(data_retrieve) > 0): 
-            child_asset_record = data_retrieve[0]
+        if (len(data_retrieve_child) > 0): 
+            child_asset_record = data_retrieve_child[0]
 
             # NOW WE HAVE THE CHILD ASSET OBJECT
 
@@ -58,7 +59,15 @@ def update_assets_with_parents_data(asset_table: Table, assets_from_csv: list[di
                         parent_asset_prop_ref = parent_asset_prop_ref.rjust(8, '0')
 
                     # Get asset object, using the AssetId, from DynamoDb, for the parent asset
-                    parent_asset_guid = get_by_secondary_index(asset_table, "AssetId", "assetId", parent_asset_prop_ref)[0]['id']
+                    data_retrieve_parent = get_by_secondary_index(asset_table, "AssetId", "assetId", parent_asset_prop_ref)
+
+                    # If we have results, get the first object and get its GUID
+                    if (len(data_retrieve_parent) > 0):
+                        parent_asset_guid = data_retrieve_parent[0]['id']
+                    # If not output error message and make note of the asset for which a parent CANNOT be found
+                    else:
+                        no_asset_found_parents.append(child_asset_prop_ref)
+                        print('Cannot find (parent) asset for Asset ID', child_asset_prop_ref)
 
             # NOW WE HAVE THE GUID FOR THE PARENT ASSET (whether this is HackneyHomes or not)
 
@@ -70,12 +79,11 @@ def update_assets_with_parents_data(asset_table: Table, assets_from_csv: list[di
             
             update_count += 1
         else:
-            unchanged_items.append(i)
-            print('Item')
-            print("Length of retrieved data", len(data_retrieve))
-            print('Broken item', i)
+            no_asset_found_children.append(child_asset_prop_ref)
+            print('Cannot find (child) asset for Asset ID', child_asset_prop_ref)
             
-    print("SCRIPT FINISHED. UNCHANGED ITEMS", unchanged_items)
+    print("SCRIPT FINISHED. CANNOT FIND ASSET (CHILD)", no_asset_found_children)
+    print("SCRIPT FINISHED. CANNOT FIND ASSET (PARENT)", no_asset_found_parents)
     return update_count
 
 
