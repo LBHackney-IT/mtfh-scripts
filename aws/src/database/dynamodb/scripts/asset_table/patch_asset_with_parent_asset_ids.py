@@ -19,6 +19,10 @@ class Config:
         "id": lambda x: bool(x),
     }
 
+# IMPORTANT: It is advised to open a specific terminal window prior to running this script,
+# so that after the script has run, the terminal will not close, and you will be able to view 
+# the final output (displaying any assets that, for whatever reason, -could not be updated).
+
 def update_assets_with_parents_data(asset_table: Table, assets_from_csv: list[dict]) -> int:
     update_count = 0
     progress_bar = ProgressBar(len(assets_from_csv), bar_length=len(assets_from_csv) // 10)
