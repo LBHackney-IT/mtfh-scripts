@@ -72,28 +72,41 @@ def update_assets_with_parents_data(asset_table: Table, assets_from_csv: list[di
                         parent_asset_name = data_retrieve_parent[0]['assetAddress']['addressLine1']
                         parent_asset_type = data_retrieve_parent[0]['assetType']
 
+                        # Now we set "parentAssetIds" field of the child asset record to the value of parent_asset_guid
+                        child_asset_record["parentAssetIds"] = parent_asset_guid
+
+                        # And we set the "parentAssets" property as well
+
+                        # We make sure the "assetLocation" is present in the asset first
+                        if "assetLocation" in child_asset_record:
+                            child_asset_record["assetLocation"]["parentAssets"] = [
+                                {
+                                    "id": parent_asset_guid,
+                                    "name": parent_asset_name,
+                                    "type": parent_asset_type
+                                },
+                            ]
+                        else: 
+                        # If not, we create the property first (Python dict eq to DynamoDb Map)
+                            child_asset_record["assetLocation"] = {}
+                            child_asset_record["assetLocation"]["parentAssets"] = [
+                                {
+                                    "id": parent_asset_guid,
+                                    "name": parent_asset_name,
+                                    "type": parent_asset_type
+                                },
+                            ]
+
+                        # Once we have amended the (child) asset with parent information on both fields, we save te changes
+                        asset_table.put_item(Item=child_asset_record)
+
                     # If not output error message and make note of the asset for which a parent CANNOT be found
                     else:
                         no_asset_found_parents.append(child_asset_prop_ref)
                         print('Cannot find (parent) asset for Asset ID', child_asset_prop_ref)
 
-            # Now we set "parentAssetIds" field of the child asset record to the value of parent_asset_guid
-            child_asset_record["parentAssetIds"] = parent_asset_guid
-
-            # And we set the "parentAssets" property as well
-            child_asset_record["assetLocation"]["parentAssets"] = [
-                {
-                    "id": parent_asset_guid,
-                    "name": parent_asset_name,
-                    "type": parent_asset_type
-                },
-            ]
-
-            # SAVE THE EDITED ASSET RECORD
-            asset_table.put_item(Item=child_asset_record)
-            
             update_count += 1
-        else:
+    else:
             no_asset_found_children.append(child_asset_prop_ref)
             print('Cannot find (child) asset for Asset ID', child_asset_prop_ref)
             
