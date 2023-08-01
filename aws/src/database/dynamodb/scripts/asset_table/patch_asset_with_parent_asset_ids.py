@@ -39,6 +39,10 @@ def update_assets_with_parents_data(asset_table: Table, assets_from_csv: list[di
         # Get AssetId/PropRef from CSV file
         child_asset_prop_ref = str(csv_asset_item["property_number"])
 
+        # Check if AssetId/PropRef exists for parent asset, if not move onto the next line in the CSV file
+        if str(csv_asset_item["parent"]) == "":
+            continue
+
         # If AssetId is less than 8 digits, left pad it with 0s until AssetId is composed of 8 digits
         # if len(child_asset_prop_ref) < 8:
         #     child_asset_prop_ref = child_asset_prop_ref.rjust(8, '0')
@@ -53,7 +57,6 @@ def update_assets_with_parents_data(asset_table: Table, assets_from_csv: list[di
             # Get the parent from the CSV file for the asset
             parent_asset_prop_ref = str(csv_asset_item["parent"])
 
-            # Otherwise, if the value is not "Hackney", we need to find the record
                 # If AssetId is less than 8 digits, left pad it with 0s until AssetId is composed of 8 digits
                     # if len(parent_asset_prop_ref) < 8:
                     #     parent_asset_prop_ref = parent_asset_prop_ref.rjust(8, '0')
