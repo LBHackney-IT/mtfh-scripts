@@ -9,6 +9,7 @@ from aws.src.database.dynamodb.utils.get_by_secondary_index import get_by_second
 from aws.src.database.dynamodb.utils.get_dynamodb_table import get_dynamodb_table
 from mypy_boto3_dynamodb.service_resource import Table
 
+import boto3
 import json
 import datetime
 import uuid
@@ -26,8 +27,8 @@ class User:
     NAME = "Callum Macpherson"
     EMAIL = "callum.macpherson@hackney.gov.uk"
 
-def setup_client():
-    return 
+def setup_client() -> boto3.client: 
+    return generate_aws_service("sns", Config.STAGE, "client")
 
 def generate_message(assetId):
     sns_message = {
