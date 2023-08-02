@@ -26,11 +26,11 @@ class User:
     NAME = "Callum Macpherson"
     EMAIL = "callum.macpherson@hackney.gov.uk"
 
-def setupClient():
-    return generate_aws_service("sns", Config.STAGE, "client")
+def setup_client():
+    return 
 
-def generateMessage(assetId):
-    snsMessage = {
+def generate_message(assetId):
+    sns_message = {
         "id": str(uuid.uuid4()),
         "eventType": "AssetUpdatedEvent",
         "sourceDomain": "Asset",
@@ -46,7 +46,7 @@ def generateMessage(assetId):
         "eventData": {},
     }
 
-    return json.dumps(snsMessage)
+    return json.dumps(sns_message)
 
 def update_elasticsearch(asset_table: Table, properties_from_csv: list[dict]) -> int:
     logger = Config.LOGGER
@@ -54,7 +54,7 @@ def update_elasticsearch(asset_table: Table, properties_from_csv: list[dict]) ->
     update_count = 0
     progress_bar = ProgressBar(len(properties_from_csv), bar_length=len(properties_from_csv) // 10)
 
-    snsClient = setupClient()
+    sns_client = setup_client()
 
     for i, csv_property_item in enumerate(properties_from_csv):
         if i % 100 == 0:
@@ -66,12 +66,12 @@ def update_elasticsearch(asset_table: Table, properties_from_csv: list[dict]) ->
         asset = get_by_secondary_index(asset_table, "AssetId", "assetId", prop_ref)[0]
 
         # 2. Generate Message
-        snsMessage = generateMessage(asset['id'])
+        sns_message = generate_message(asset['id'])
 
         # 3. Publish SNS message
-        response = snsClient.publish(
+        response = sns_client.publish(
             TopicArn=Config.SNS_TOPIC_ARN,
-            Message=snsMessage,
+            Message=sns_message,
             MessageGroupId="fake",
         )
 
