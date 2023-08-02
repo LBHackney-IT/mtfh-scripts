@@ -49,7 +49,7 @@ def generate_message(assetId):
 
     return json.dumps(sns_message)
 
-def update_elasticsearch(asset_table: Table, properties_from_csv: list[dict]) -> int:
+def update_assets(asset_table: Table, properties_from_csv: list[dict]) -> int:
     logger = Config.LOGGER
 
     update_count = 0
@@ -63,33 +63,50 @@ def update_elasticsearch(asset_table: Table, properties_from_csv: list[dict]) ->
             
         prop_ref = str(csv_property_item["property_number"])
         
-        # 1. Get asset from dynamoDb
-        asset = get_by_secondary_index(asset_table, "AssetId", "assetId", prop_ref)[0]
-
-        # 2. Generate Message
-        sns_message = generate_message(asset['id'])
-
-        # 3. Publish SNS message
-        response = sns_client.publish(
-            TopicArn=Config.SNS_TOPIC_ARN,
-            Message=sns_message,
-            MessageGroupId="fake",
-        )
-
-        # Log ids for failed requests
-        if response["ResponseMetadata"]["HTTPStatusCode"] != 200:
-            logger.log(f"Request failed for asset {asset.id} with response {response['ResponseMetadata']['HTTPStatusCode']}")
-
-        update_count += 1
-
+        try:
+            update_asset(prop_ref, asset_table, sns_client)
+            
+        except Exception as e:
+            logger.error(f"Failed to update asset with propRef {prop_ref} with exception {str(e)}")
+            
+        else:
+            # Success
+            update_count += 1
+    
     return update_count
 
+def update_asset(prop_ref, asset_table, sns_client):
+    logger = Config.LOGGER
+    
+    # 1. Get asset from dynamoDb
+    assets = get_by_secondary_index(asset_table, "AssetId", "assetId", prop_ref)
+    
+    # no assets found with matching property reference
+    if not assets:
+        logger.error(f"Asset with propRef {prop_ref} not found in asset table")
+        return
+    
+    asset = assets[0]
+
+    # 2. Generate Message
+    sns_message = generate_message(asset['id'])
+
+    # 3. Publish SNS message
+    response = sns_client.publish(
+        TopicArn=Config.SNS_TOPIC_ARN,
+        Message=sns_message,
+        MessageGroupId="fake",
+    )
+    
+    # Log ids for failed requests
+    if response["ResponseMetadata"]["HTTPStatusCode"] != 200:
+        logger.error(f"Request failed for asset {asset.id} with response {response['ResponseMetadata']['HTTPStatusCode']}")
 
 def main():
     table = get_dynamodb_table(Config.TABLE_NAME, Config.STAGE)
     property_csv_data = csv_to_dict_list(Config.FILE_PATH)
 
-    update_count = update_elasticsearch(table, property_csv_data)
+    update_count = update_assets(table, property_csv_data)
     
     logger = Config.LOGGER
     
