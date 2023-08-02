@@ -67,7 +67,7 @@ def update_assets(asset_table: Table, properties_from_csv: list[dict]) -> int:
             update_asset(prop_ref, asset_table, sns_client)
             
         except Exception as e:
-            logger.error(f"Failed to update asset with propRef {prop_ref} with exception {str(e)}")
+            logger.log(f"Failed to update asset with propRef {prop_ref} with exception {str(e)}")
             
         else:
             # Success
@@ -83,7 +83,7 @@ def update_asset(prop_ref, asset_table, sns_client):
     
     # no assets found with matching property reference
     if not assets:
-        logger.error(f"Asset with propRef {prop_ref} not found in asset table")
+        logger.log(f"Asset with propRef {prop_ref} not found in asset table")
         return
     
     asset = assets[0]
@@ -100,7 +100,7 @@ def update_asset(prop_ref, asset_table, sns_client):
     
     # Log ids for failed requests
     if response["ResponseMetadata"]["HTTPStatusCode"] != 200:
-        logger.error(f"Request failed for asset {asset.id} with response {response['ResponseMetadata']['HTTPStatusCode']}")
+        logger.log(f"Request failed for asset {asset.id} with response {response['ResponseMetadata']['HTTPStatusCode']}")
 
 def main():
     table = get_dynamodb_table(Config.TABLE_NAME, Config.STAGE)
