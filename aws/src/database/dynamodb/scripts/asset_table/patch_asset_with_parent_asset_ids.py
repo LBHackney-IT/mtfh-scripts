@@ -76,10 +76,11 @@ def update_assets_with_parents_data(asset_table: Table, assets_from_csv: list[di
                     parent_asset_name = data_retrieve_parent[0]['assetAddress']['addressLine1']
                     parent_asset_type = data_retrieve_parent[0]['assetType']
 
-                # If not output error message and make note of the asset for which a parent CANNOT be found
+                # If not output error message and make note of the asset for which a parent CANNOT be found, and move onto the next line in the CSV file
                 else:
                     no_asset_found_parents.append(child_asset_prop_ref)
                     logger.log(f'Cannot find (parent) asset for Asset ID {child_asset_prop_ref}')
+                    continue
 
             # Now we set "parentAssetIds" field of the child asset record to the value of parent_asset_guid
             child_asset_record["parentAssetIds"] = parent_asset_guid
