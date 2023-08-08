@@ -106,7 +106,7 @@ def update_assets_with_parents_data(asset_table: Table, assets_from_csv: list[di
                     },
                 ]
 
-            # Once we have amended the (child) asset with parent information on both fields, we save te changes
+            # Once we have amended the (child) asset with parent information on both fields, we save the changes
             asset_table.put_item(Item=child_asset_record)
 
             update_count += 1
