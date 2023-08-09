@@ -8,13 +8,10 @@
 # from aws.src.database.multi_table.amend_tenure import main as amend_tenure_main
 # from aws.src.database.multi_table.find_persons_for_properties import main as find_persons_for_properties_main
 
-from aws.src.database.dynamodb.scripts.asset_table.patch_asset_with_additional_boiler_house_id import main as update_boilerhouse
+# from gcp.src.service_account.main import main as clear_folders
 
 if __name__ == "__main__":
     # 1) IMPORTANT: Uncomment and click into functions in the imports to view definitions and edit config
     #     - e.g. set STAGE to "development" or "production"
     # 2) Call functions here
-
-    update_boilerhouse()
-
     pass
