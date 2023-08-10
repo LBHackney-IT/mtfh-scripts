@@ -20,7 +20,7 @@ These Python commands may be different depending on your OS and how you installe
 2. Make a venv (local package directory) with `python3 -m venv venv`
 3. Activate the venv
     - Linux / MacOS: Run `source venv/bin/activate`
-    - Windows: Run `./venv/bin/activate.bat` or `./venv/bin/activate.ps1` depending on what's available
+    - Windows: Run `./venv/bin/activate.bat` or `./venv/bin/activate.ps1` depending on what's available (can also be in the \Scripts subdirectory)
 3. Optionally verify the venv is active:
     - Linux / MacOS: Run `echo $VIRTUAL_ENV` and check it points to the venv
     - Windows: Run `echo %VIRTUAL_ENV%` and check it points to the venv
