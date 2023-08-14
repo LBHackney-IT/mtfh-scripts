@@ -1,11 +1,13 @@
 import json
 from pprint import pprint
 
-import pyperclip
 from dateutil import parser
 from mypy_boto3_dynamodb.service_resource import Table
 
 from aws.src.authentication.generate_aws_resource import generate_aws_service
+from aws.src.utils.confirm import confirm
+from aws.src.database.multi_table.utils.amend_tenure_utils import query_item_by_pk_es, update_item_by_pk_es, \
+    connect_to_jumpbox_for_es
 from enums.enums import Stage
 
 # Config - change these
@@ -52,18 +54,18 @@ def main():
     print(f"Tenure ID: {TENURE_ID}")
     print(f"Param key: {PARAM_KEY_ES}")
     print(f"New value: {UPDATE_DATE}")
-    _confirm("Correct?")
+    confirm("Correct?")
 
     tenure = get_tenure_dynamodb(TENURE_ID)
-    original_date = tenure[PARAM_KEY_DYNAMO_TENURE]
+    original_date = tenure.get(PARAM_KEY_DYNAMO_TENURE)
 
-    update_dynamodb = _confirm(f"Update {STAGE.value} DynamoDB?", kill=False)
+    update_dynamodb = confirm(f"Update {STAGE.value} DynamoDB?", kill=False)
     if update_dynamodb:
         update_tenure_dynamodb(tenure)
         update_property_dynamodb(tenure)
         update_persons_dynamodb(tenure)
 
-    update_es = _confirm(f"Update {STAGE.value} Elasticsearch?", kill=False)
+    update_es = confirm(f"Update {STAGE.value} Elasticsearch?", kill=False)
     if update_es:
         connect_to_jumpbox_for_es(instance_id=INSTANCE_ID, stage=STAGE.value)
         update_tenure_elasticsearch(tenure_pk=TENURE_ID)
@@ -87,41 +89,6 @@ def final_message(tenure: dict[str, str | None], original_date: str | None):
     )
 
 
-def connect_to_jumpbox_for_es(instance_id=INSTANCE_ID, stage=STAGE.value):
-    command = f"aws ssm start-session --target {instance_id} --region eu-west-2 --profile {stage};\n"
-    pyperclip.copy(command)
-
-    print(
-        "\n== Connect to Jumpbox/Bastion for ElasticSearch ==\n",
-        command,
-        "\n== ==\n")
-    _confirm(f"Command to connect to Jumpbox/Bastion copied to clipboard. Connected?")
-
-
-def query_item_by_pk_es(query_path: str, es_extension: str, primary_key: str):
-    with open(query_path, "r") as outfile:
-        es_query_cmd = outfile.read()
-    es_query = json.dumps({"query": {"term": {"id.keyword": primary_key}}})
-    curl_query = f"curl -X GET '{ES_DOMAIN}/{es_extension}/_search' -H 'Content-Type: application/json' " \
-                 f"-d '{es_query}' | python -c '\n{es_query_cmd}'"
-    print("== Elasticsearch Query ==")
-    print(curl_query)
-    pyperclip.copy(curl_query)
-    _confirm(f"Command to query ES copied to clipboard. Correct {es_extension}? ")
-
-
-def update_item_by_pk_es(es_extension: str, primary_key: str, update_obj: str):
-    curl_update = f"curl -X POST '{ES_DOMAIN}/{es_extension}/_update/{primary_key}'" \
-                  f" -H 'Content-Type: application/json' -d '{update_obj}'"
-    pyperclip.copy(curl_update)
-
-    print(f"== {es_extension} Elasticsearch Update ==")
-    print(update_obj)
-    _confirm(f"Command to update {es_extension[0:-1]} copied to clipboard.\nElasticsearch updated?")
-
-    print(f"Elasticsearch updated!")
-
-
 def update_tenure_elasticsearch(tenure_pk=TENURE_ID):
     # Update tenure.startOfTenureDate or tenure.endOfTenureDate
     index = "tenures"
@@ -132,8 +99,8 @@ def update_tenure_elasticsearch(tenure_pk=TENURE_ID):
             }
         }
     )
-    query_item_by_pk_es("input/elasticsearch_query_tenure.py", index, tenure_pk)
-    update_item_by_pk_es(index, tenure_pk, update_obj)
+    query_item_by_pk_es("input/elasticsearch_query_tenure.py", ES_DOMAIN, index, tenure_pk)
+    update_item_by_pk_es(ES_DOMAIN, index, tenure_pk, update_obj)
 
 
 def update_property_elasticsearch(property_pk):
@@ -148,8 +115,8 @@ def update_property_elasticsearch(property_pk):
             }
         }
     )
-    query_item_by_pk_es("input/elasticsearch_query_asset.py", index, property_pk)
-    update_item_by_pk_es(index, property_pk, update_obj)
+    query_item_by_pk_es("input/elasticsearch_query_asset.py", ES_DOMAIN, index, property_pk)
+    update_item_by_pk_es(ES_DOMAIN, index, property_pk, update_obj)
 
 
 def get_tenure_dynamodb(primary_key=TENURE_ID) -> dict:
@@ -163,9 +130,9 @@ def update_tenure_dynamodb(tenure_item: dict):
     print("\n== DynamoDB Item ==")
     pprint(tenure_item)
     print("== DynamoDB Item ==")
-    print(f"Pending Update: {PARAM_KEY_DYNAMO_TENURE}: {tenure_item[PARAM_KEY_DYNAMO_TENURE]} -> {UPDATE_DATE}")
+    print(f"Pending Update: {PARAM_KEY_DYNAMO_TENURE}: {tenure_item.get(PARAM_KEY_DYNAMO_TENURE)} -> {UPDATE_DATE}")
 
-    if not _confirm("Confirm updating this tenure?", kill=False):
+    if not confirm("Confirm updating this tenure?", kill=False):
         print("Tenure not updated.")
         return
 
@@ -190,7 +157,7 @@ def update_property_dynamodb(tenure_item: dict):
     print(f"Pending Update: tenure {PARAM_KEY_DYNAMO_ASSET}: "
           f"{property_item['tenure'].get(PARAM_KEY_DYNAMO_ASSET)} -> {UPDATE_DATE}")
 
-    if not _confirm(f"Confirm updating this property's tenure {PARAM_KEY_DYNAMO_ASSET}?", kill=False):
+    if not confirm(f"Confirm updating this property's tenure {PARAM_KEY_DYNAMO_ASSET}?", kill=False):
         print("Tenure not updated.")
         return
 
@@ -222,29 +189,19 @@ def update_persons_dynamodb(tenure_item: dict):
                 print("== DynamoDB Item ==")
                 print(
                     f"Pending Update: tenure {PARAM_KEY_DYNAMO_PERSON}: "
-                    f"{tenure.get(PARAM_KEY_DYNAMO_PERSON).split('T')[0]} -> {UPDATE_DATE.split('T')[0]}"
+                    f"{str(tenure.get(PARAM_KEY_DYNAMO_PERSON)).split('T')[0]} -> {UPDATE_DATE.split('T')[0]}"
                 )
                 person_tenures[i][PARAM_KEY_DYNAMO_PERSON] = str(UPDATE_DATE).split("T")[0]
                 print(tenure["assetFullAddress"])
         print(f"Update tenure for person {tenure_person['id']}, {tenure_person['fullName']}?")
 
-        if _confirm(f"Confirm updating this person's tenure {PARAM_KEY_DYNAMO_PERSON}?", kill=False):
+        if confirm(f"Confirm updating this person's tenure {PARAM_KEY_DYNAMO_PERSON}?", kill=False):
             persons_table.update_item(
                 Key={"id": tenure_person["id"]},
                 UpdateExpression=f"set tenures = :r",
                 ExpressionAttributeValues={":r": person_tenures},
                 ReturnValues="UPDATED_NEW",
             )
-
-
-def _confirm(question: str, kill=True):
-    confirm = input(f"{question} (y/n): ").lower() not in ["y", "yes"]
-    if confirm and kill:
-        print("Exiting")
-        exit()
-    if confirm:  # No kill / exit
-        return False
-    return True
 
 
 if __name__ == "__main__":
