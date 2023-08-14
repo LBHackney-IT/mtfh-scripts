@@ -25,7 +25,7 @@ class Config:
 
 def update_assets_with_parents_data(asset_table: Table, assets_from_csv: list[dict], logger: Logger) -> int:
     update_count = 0
-    progress_bar = ProgressBar(len(assets_from_csv), bar_length=len(assets_from_csv) // 10)
+    progress_bar = ProgressBar(len(assets_from_csv))
 
     # The arrays below will be used to display lists of assets that could not be
     # modified by the script (asset not found in DynamoDb).
