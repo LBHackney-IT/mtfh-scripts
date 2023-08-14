@@ -4,7 +4,7 @@ from aws.src.database.domain.dynamo_domain_objects import Tenure, HouseholdMembe
 from aws.src.utils.safe_object_from_dict import safe_object_from_dict
 
 
-def test_generate_tenure_from_dict():
+def test_safe_object_from_dict_generates_tenure():
     """
     Test that safe_object_from_dict returns a Tenure object with the correct values
     """
@@ -17,6 +17,10 @@ def test_generate_tenure_from_dict():
 
     tenure = safe_object_from_dict(Tenure, eg_tenure)
 
+    # Does outer type conversion
+    assert isinstance(tenure, Tenure)
     assert tenure.id == '4c148ab7-a58b-a4c2-053a-03bc1684b559'
-    assert tenure.householdMembers[0].fullName == 'FAKE_First FAKE_Last'
+
+    # Does inner type conversion
     assert isinstance(tenure.householdMembers[0], HouseholdMember)
+    assert tenure.householdMembers[0].fullName == 'FAKE_First FAKE_Last'
