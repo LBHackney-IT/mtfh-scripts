@@ -6,7 +6,7 @@ Scripts for use within Modern Tools For Housing
 
 These Python commands may be different depending on your OS and how you installed Python.
 
-Try `python` instead of `python3` if you get "command not found".
+**Try `python` instead of `python3` if you get "command not found".**
 
 ## Requirements
 
@@ -19,12 +19,12 @@ Try `python` instead of `python3` if you get "command not found".
 1. Clone this repository
 2. Make a venv (local package directory) with `python3 -m venv venv`
 3. Activate the venv
-    - Linux / MacOS: Run `source venv/bin/activate`
-    - Windows: Run `./venv/bin/activate.bat` or `./venv/bin/activate.ps1` depending on what's available
-3. Optionally verify the venv is active:
-    - Linux / MacOS: Run `which python3` and check it points to the venv
-    - Windows: Run `where.exe python3` and check it points to the venv
-4. Run `python3 -m pip install -r requirements.txt` in the root directory of the repository to install all requirements
+   - Linux / MacOS: Run `source venv/bin/activate`
+   - Windows: Run `./venv/bin/activate.bat` or `./venv/bin/activate.ps1` depending on what's available (can also be in the \Scripts subdirectory)
+4. Optionally verify the venv is active:
+   - Linux / MacOS: Run `echo $VIRTUAL_ENV` and check it points to the venv
+   - Windows: Run `echo %VIRTUAL_ENV%` and check it points to the venv
+5. Run `python3 -m pip install -r requirements.txt` in the root directory of the repository to install all requirements
    into the venv.
 
 ## Setup / AWS
@@ -39,7 +39,8 @@ You can follow these steps multiple times to set up different profiles for diffe
 1. Go to the Google SSO AWS start page and select "Command line or programmatic access" for the account needed.
 2. Note the steps under **AWS IAM Identity Center credentials (Recommended)** and use those details below.
 3. Run `aws configure sso` and follow the prompts to set up your AWS credentials.
-   Refer to the Stage enum in `aws/src/enums/enums.py` as it must exactly match one of these.
+   During this process, pay attention to setting the correct values for `sso_region` and `cli default client region` as these can be different.
+   For the `cli profile name` value, refer to the Stage enum in `enums/enums.py` as it must exactly match one of these.
    Add to the enum as needed for different profiles.
 4. To refresh your credentials when they expire, run `aws sso login --profile {profile_name}`
 
