@@ -6,6 +6,8 @@ from googleapiclient import errors
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 
+from gcp.src.service_account.utils.confirm import confirm
+
 
 class DriveServiceAccountClient:
     """
@@ -38,7 +40,7 @@ class DriveServiceAccountClient:
             json.dump(data, outfile)
             print(f"Data written to {self.output_filename}")
 
-    def get_file_or_folder(self, file_id, fields=None) -> dict:
+    def get_file_or_folder(self, file_id, fields: list[str] = None) -> dict:
         """
         Gets a file or folder by File ID or Folder ID
         See: https://developers.google.com/drive/api/v3/reference/files/get
@@ -46,33 +48,51 @@ class DriveServiceAccountClient:
         :param fields: Data about the file/folder to fetch, See https://developers.google.com/drive/api/guides/fields-parameter
         :return: File response JSON object
         """
+        if fields is None:
+            fields = []
+
+        field_query = "id, name, size, createdTime, parents" + "".join([", " + field for field in fields])
+
         try:
             response = self.service_readonly.files().get(
-                fileId=file_id, fields=fields
+                fileId=file_id,
+                fields=field_query
             ).execute()
             return response
         except errors.HttpError:
             print(f"File with id {file_id} not found!")
 
-    def query_files(self, query_lines: list[str]) -> list[str]:
+    def query_files(self, query_lines: list[str], extra_file_fields:list[str] = None, extra_fields: list[str] = None) -> list[str]:
         """
         Gets a list of files based on a valid query
         See https://developers.google.com/drive/api/guides/search-files for valid queries reference
         :param query_lines: A list of queries following Google's file search query syntax
+        :param extra_file_fields: Extra fields in the file to include in the response
+        :param extra_fields: Extra fields to include in the response
         :return: List of files
         """
+        if extra_file_fields is None:
+            extra_file_fields = []
+        if extra_fields is None:
+            extra_fields = []
         query = " and ".join(query_lines)
         print(query)
+        extra_file_fields = "".join([", " + field for field in extra_file_fields])
+        extra_fields = "".join([", " + field for field in extra_fields])
+        fields = f"files(id, name, size, createdTime, parents{extra_file_fields}), nextPageToken" + extra_fields
+        print(fields)
+
         all_results = []
-        page_token = None
+        page_token = ""
         while True:
             response = self.service_readonly.files().list(
                 q=query,
                 corpora="allDrives",
                 includeItemsFromAllDrives=True,
                 supportsAllDrives=True,
+                pageSize=100,
                 pageToken=page_token,
-                fields="files(id, name, size, createdTime)"
+                fields=fields
             )
             try:
                 result = response.execute()
@@ -84,8 +104,6 @@ class DriveServiceAccountClient:
                 # When nothing is found, response.execute() throws HttpError
                 pass
         print(f"{len(all_results)} files found:")
-
-        print(all_results)
         return all_results
 
     def upload(self, filename: str, mimetype: str, folder_id: str = None) -> str:
@@ -138,7 +156,7 @@ class DriveServiceAccountClient:
             f'An error occurred deleting {file_id}:\n>>> {error}'
 
     def delete_matching_files_in_folder(self, folder_id, query_lines: list[str] = None, file_regex=None,
-                                        file_size_minimum: int = 0, except_filename: str = None, exclude_latest=False):
+                                        file_size_minimum: int = 0, except_filename: str = None, exclude_latest=True):
         """
         Deletes all files matching a specific query as in query_files, uses filename regex and file_size_minimum as safeguards
         :param folder_id: ID of folder to find files under
@@ -163,21 +181,15 @@ class DriveServiceAccountClient:
             print(f"Excluding latest file: {latest_file['name']}")
 
         files = [file for file in files if file["name"] != except_filename or except_filename not in file["name"]]
+        total_size = sum([int(file["size"]) for file in files])
 
         self.write_data_to_json(files)
         # Get user confirmation for deletion
-        confirmation = input(
-            f"Will delete {len(files)} files in {folder_id}, example: {files[0]}, see {self.output_filename} for all files\nContinue? Y/Yes or N/No: ")
-        if confirmation.lower() not in ["y", "yes"]:
-            print("Aborting")
-            return
+        confirm(
+            f"Will delete {len(files)} files in {folder_id}, example: {files[0]}, see {self.output_filename} for all files, Confirm? ")
 
         if file_regex is None:
             file_regex = ".+"
-
-        # latest_file = max(files, key=lambda x: x["createdTime"])
-        #
-        # files = [file for file in files if file["name"] != latest_file["name"]]
 
         # Delete all captured files
         for file in files:
@@ -189,3 +201,19 @@ class DriveServiceAccountClient:
                 else:
                     print(f"{file['name']} DELETING - ", f"{round(int(file['size']) / 10 ** 6, 2)}MB")
                     self.delete_file(file)
+        print(f"Total size: {round(total_size / 10 ** 6, 2)}MB")
+
+    def find_all_owned_files(self, extra_file_fields: list[str] = None, extra_fields: list[str] = None) -> list[dict]:
+        """
+        Finds all files owned by the user and the total size of all files
+        :return: List of files
+        """
+        if extra_file_fields is None:
+            extra_file_fields = []
+        if extra_fields is None:
+            extra_fields = []
+        query_lines = ["'me' in owners"]
+        files = self.query_files(query_lines, extra_file_fields, extra_fields)
+        total_size = sum([int(file["size"]) for file in files])
+        print(f"Total size: {round(total_size / 10 ** 6, 2)}MB")
+        return files
