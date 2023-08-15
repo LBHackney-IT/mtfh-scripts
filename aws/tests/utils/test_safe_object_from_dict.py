@@ -4,7 +4,7 @@ from aws.src.database.domain.dynamo_domain_objects import Tenure, HouseholdMembe
 from aws.src.utils.safe_object_from_dict import safe_object_from_dict
 
 
-def test_safe_object_from_dict_generates_tenure():
+def generates_tenure():
     """
     Returns a Tenure object with the correct values
     """
@@ -25,7 +25,7 @@ def test_safe_object_from_dict_generates_tenure():
     assert isinstance(tenure.householdMembers[0], HouseholdMember)
     assert tenure.householdMembers[0].fullName == 'FAKE_First FAKE_Last'
 
-def test_safe_object_from_dict_handles_undefined_fields():
+def handles_undefined_fields():
     """
     Not affected by undefined fields in outer and inner objects and still allows for inner conversion
     """
