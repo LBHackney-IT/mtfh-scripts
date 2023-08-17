@@ -7,8 +7,8 @@
 #     main as get_housing_officers_and_area_managers_main
 # from aws.src.database.multi_table.amend_tenure import main as amend_tenure_main
 # from aws.src.database.multi_table.find_persons_for_properties import main as find_persons_for_properties_main
-
 # from gcp.src.service_account.main import main as clear_folders
+# from aws.src.database.multi_table.update_cautionary_alerts import main as update_cautionary_alerts_main
 
 
 if __name__ == "__main__":
