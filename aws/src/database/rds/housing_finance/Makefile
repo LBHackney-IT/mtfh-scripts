@@ -15,17 +15,17 @@ PROFILE = housing-${ENVIRONMENT}
 
 # -- Parameter Store paths --
 ifeq (${ENVIRONMENT}, development)
-	INSTANCE_ID_PATH := "/housing-finance/${ENVIRONMENT}/instance-id"
+	INSTANCE_ID_PATH := " /housing-finance/${ENVIRONMENT}/instance-id"
 else ifeq (${ENVIRONMENT}, staging)
  	# There is currently no /housing-finance/staging/instance-id parameter
-	INSTANCE_ID_PATH := "/platform-apis-jump-box-instance-name"
+	INSTANCE_ID_PATH := " /platform-apis-jump-box-instance-name"
 else ifeq (${ENVIRONMENT}, production)
-	INSTANCE_ID_PATH := "/platform-apis-jump-box-instance-name"
+	INSTANCE_ID_PATH := " /platform-apis-jump-box-instance-name"
 endif
-DB_ENDPOINT_PATH := "/housing-finance/${ENVIRONMENT}/db-host"
-REMOTE_PORT_PATH := "/housing-finance/${ENVIRONMENT}/db-port"
-DB_USERNAME_PATH := "/housing-finance/${ENVIRONMENT}/db-username"
-DB_PASSWORD_PATH := "/housing-finance/${ENVIRONMENT}/db-password"
+DB_ENDPOINT_PATH := " /housing-finance/${ENVIRONMENT}/db-host"
+REMOTE_PORT_PATH := " /housing-finance/${ENVIRONMENT}/db-port"
+DB_USERNAME_PATH := " /housing-finance/${ENVIRONMENT}/db-username"
+DB_PASSWORD_PATH := " /housing-finance/${ENVIRONMENT}/db-password"
 
 # -- Parameters --
 INSTANCE_ID := $(shell aws ssm get-parameter --name ${INSTANCE_ID_PATH} --region "eu-west-2" --profile ${PROFILE} --query Parameter.Value --output text)

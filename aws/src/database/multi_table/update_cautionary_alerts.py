@@ -9,7 +9,7 @@ from datetime import datetime
 
 STAGE = Stage.HOUSING_PRODUCTION
 
-def update_cautionary_alert_in_db_if_tenure_inactive(person_table: Table, alerts_from_csv: list[dict]):
+def update_cautionary_alert_from_csv_if_tenure_with_alerts_inactive(person_table: Table, alerts_from_csv: list[dict]) -> list[dict]:
     """
     Iterate through the alerts and remove property details if tenure is inactive
     1. Get person details from dynamo using mmh_id in csv
