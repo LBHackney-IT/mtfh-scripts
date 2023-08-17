@@ -24,11 +24,6 @@ def update_cautionary_alert_from_csv_if_tenure_with_alerts_inactive(person_table
             alert_item["failed_reason"] = f"mmh_id is null for id {alert_id}"
             continue
         person = person_table.get_item(Key={"id": mmh_id}).get("Item")
-
-        person_id = person["id"]
-        if person is None:
-            alert_item["failed_reason"] = f"Could not get person for personId {person_id}"
-            continue
         tenures = person["tenures"]
         for tenure_in_person in tenures:
             end_date = tenure_in_person["endDate"]
@@ -48,7 +43,7 @@ def main():
     _file_path = "aws/src/database/data/input/CautionaryAlerts14August2023.csv"
     alert_data = csv_to_dict_list(_file_path)
     person_table: Table = get_dynamodb_table("Persons", STAGE)
-    results = update_cautionary_alert_in_db_if_tenure_inactive(person_table, alert_data)
+    results = update_cautionary_alert_from_csv_if_tenure_with_alerts_inactive(person_table, alert_data)
 
     with open("updated_alerts.tsv", "w") as f:
         headings = results[0].keys()
