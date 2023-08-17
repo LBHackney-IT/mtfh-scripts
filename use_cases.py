@@ -7,6 +7,7 @@
 #     main as get_housing_officers_and_area_managers_main
 # from aws.src.database.multi_table.amend_tenure import main as amend_tenure_main
 # from aws.src.database.multi_table.find_persons_for_properties import main as find_persons_for_properties_main
+# from gcp.src.service_account.main import main as service_account_main
 
 
 if __name__ == "__main__":
