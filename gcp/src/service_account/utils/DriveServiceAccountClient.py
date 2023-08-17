@@ -6,6 +6,8 @@ from googleapiclient import errors
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 
+from gcp.src.service_account.utils.confirm import confirm
+
 
 class DriveServiceAccountClient:
     """
@@ -138,7 +140,7 @@ class DriveServiceAccountClient:
             f'An error occurred deleting {file_id}:\n>>> {error}'
 
     def delete_matching_files_in_folder(self, folder_id, query_lines: list[str] = None, file_regex=None,
-                                        file_size_minimum: int = 0, except_filename: str = None, exclude_latest=False):
+                                        file_size_minimum: int = 0, except_filename: str = None, exclude_latest=True):
         """
         Deletes all files matching a specific query as in query_files, uses filename regex and file_size_minimum as safeguards
         :param folder_id: ID of folder to find files under
@@ -163,21 +165,16 @@ class DriveServiceAccountClient:
             print(f"Excluding latest file: {latest_file['name']}")
 
         files = [file for file in files if file["name"] != except_filename or except_filename not in file["name"]]
+        total_size = sum([int(file["size"]) for file in files])
 
         self.write_data_to_json(files)
         # Get user confirmation for deletion
-        confirmation = input(
-            f"Will delete {len(files)} files in {folder_id}, example: {files[0]}, see {self.output_filename} for all files\nContinue? Y/Yes or N/No: ")
-        if confirmation.lower() not in ["y", "yes"]:
-            print("Aborting")
-            return
+        confirm(
+            f"Will delete {len(files)} files in {folder_id}, example: {files[0]}, see {self.output_filename} for all files, Confirm? ")
+
 
         if file_regex is None:
             file_regex = ".+"
-
-        # latest_file = max(files, key=lambda x: x["createdTime"])
-        #
-        # files = [file for file in files if file["name"] != latest_file["name"]]
 
         # Delete all captured files
         for file in files:
@@ -189,3 +186,4 @@ class DriveServiceAccountClient:
                 else:
                     print(f"{file['name']} DELETING - ", f"{round(int(file['size']) / 10 ** 6, 2)}MB")
                     self.delete_file(file)
+        print(f"Total size: {round(total_size / 10 ** 6, 2)}MB")

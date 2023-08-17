@@ -12,7 +12,9 @@ The parameter store path for getting the service account credentials is configur
 ## Use
 
 1) Open `main.py`
-2) Use the `service_account` instance's methods inside the `if __name__ == "__main__":` clause
+2) Use the `service_account` instance's methods inside the `main()` function
+3) Uncomment the import from `main.py` in the `use_case.py` file in the root directory of the scripts repo and call the imported function
+4) Run `use_case.py` to execute the use case
 
 ## Examples
 
@@ -20,7 +22,7 @@ Get CSV files in a folder with a specified ID which aren't in the trash and have
 2022", then write these to a json file
 
 ```python
-if __name__ == "__main__":
+def main():
     folder_id = input("Enter folder ID: ")
     query_lines = [
         f"'{folder_id}' in parents",
