@@ -44,7 +44,7 @@ def set_id_in_csv_with_asset_id(asset_table: Table, assets_from_csv: list[dict])
     Iterate through the asset and set the id for each record
     :return: ****TO UPDATE*** A dictionary containing the updated assets and the assets that failed to update
     """
-    progress_bar = ProgressBar(len(assets_from_csv), bar_length=len(assets_from_csv) // 10)
+    progress_bar = ProgressBar(len(assets_from_csv))
     
     for i, asset_item in enumerate(assets_from_csv):
         if isinstance(asset_item["property_pk"], str) and len(asset_item["property_pk"]) > 0:

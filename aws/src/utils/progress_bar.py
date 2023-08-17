@@ -1,5 +1,5 @@
 class ProgressBar:
-    def __init__(self, total: int, separation: str = "\n\n", bar_length: int = 20):
+    def __init__(self, total: int, separation: str = "\n\n"):
         """
         Displays a progress bar to the console
         :param total: Total number of increments
@@ -8,7 +8,7 @@ class ProgressBar:
         """
         self.total = total
         self.separation = separation
-        self.bar_length = bar_length
+        self.BAR_LENGTH = 50
 
     def display(self, current: int, note: str = None):
         """
@@ -16,9 +16,24 @@ class ProgressBar:
         :param current: Current number
         :param note: Note to add to the end of the progress bar
         """
+
+        normalized_current = round(((current / self.total) * 100) / self.BAR_LENGTH)
+
+        bar = f"Progress: [{normalized_current * '#'}{(self.BAR_LENGTH - normalized_current) * ' '}] {current}/{self.total} " \
+
+        padded_bar = f"{self.separation}{bar}{self.separation}"
+        print(padded_bar)
+
         progress = current / self.total
-        block = int(round(self.bar_length * progress))
-        bar = f"Progress: [{block * '#'}{(self.bar_length - block) * ' '}] {current}/{self.total} " \
+        block = int(round(self.BAR_LENGTH * progress))
+        bar = f"Progress: [{block * '#'}{(self.BAR_LENGTH - block) * ' '}] {current}/{self.total} " \
               f"{f'- {note}' if note else ''}"
         padded_bar = f"{self.separation}{bar}{self.separation}"
         print(padded_bar)
+
+
+if __name__ == "__main__":
+    # Example usage
+    pb = ProgressBar(1000)
+    for i in range(201):
+        pb.display(i*5)

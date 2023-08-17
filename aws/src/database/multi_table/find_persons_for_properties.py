@@ -86,7 +86,7 @@ def set_person_ids_in_alert_data(asset_table: Table, tenure_table: Table, alerts
     Iterate through the alerts and set the personId for each alert
     :return: A dictionary containing the updated alerts and the alerts that failed to update
     """
-    progress_bar = ProgressBar(len(alerts_from_csv), bar_length=len(alerts_from_csv) // 10)
+    progress_bar = ProgressBar(len(alerts_from_csv))
     for i, alert_item in enumerate(alerts_from_csv):
         if i % 10 == 0:
             progress_bar.display(i)
