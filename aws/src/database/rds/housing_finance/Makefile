@@ -9,7 +9,7 @@
 # Local port to connect to on your machine
 LOCAL_PORT = 1433
 # For Parameter store URL Paths
-ENVIRONMENT = production
+ENVIRONMENT = staging
 # Set to AWSCLI Profile name
 PROFILE = housing-${ENVIRONMENT}
 
@@ -51,7 +51,7 @@ sso_login:
 	fi
 
 port_forwarding_to_hfs_db:
-	echo "Connecting to ${DB_ENDPOINT} on local port ${LOCAL_PORT}\n===\nUsername: ${DB_USERNAME}\nPassword: ${DB_PASSWORD}\n==="
+	echo "Connecting to ${DB_ENDPOINT} on local port ${LOCAL_PORT} Username: ${DB_USERNAME} Password: ${DB_PASSWORD}"
 	aws ssm start-session \
 		--target ${INSTANCE_ID} \
 		--region=eu-west-2  \
