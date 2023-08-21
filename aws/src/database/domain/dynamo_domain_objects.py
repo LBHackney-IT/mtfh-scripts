@@ -1,7 +1,27 @@
+from typing import cast, Any
+
 from _decimal import Decimal
 from dataclasses import dataclass
 
 from aws.src.utils.safe_object_from_dict import safe_object_from_dict
+
+
+def _from_data(cls, data: Any) -> object:
+    """
+    Converts a dict to a dataclass, or returns the dataclass if it is already one
+    :param cls: The dataclass to convert to
+    :param data: The data to convert
+    :return: The converted dataclass
+    """
+    if isinstance(data, dict):
+        return safe_object_from_dict(cls, data)
+    elif isinstance(data, cls):
+        return data
+    elif data is None:
+        return None
+    else:
+        raise ValueError(f"Cannot convert {data} to {cls}")
+
 
 # --- Tenure Table ---
 @dataclass
@@ -12,6 +32,9 @@ class TenuredAsset:
     uprn: str | None
     type: str | None
 
+    @classmethod
+    def from_data(cls, data: Any):
+        return cast(_from_data(cls, data), TenuredAsset | None)
 
 @dataclass
 class HouseholdMember:
@@ -21,6 +44,10 @@ class HouseholdMember:
     isResponsible: bool | None
     personTenureType: str | None
     type: str | None
+
+    @classmethod
+    def from_data(cls, data: Any):
+        return cast(_from_data(cls, data), HouseholdMember | None)
 
 
 @dataclass
@@ -44,10 +71,17 @@ class Tenure:
     tenureType: dict | None
     terminated: dict | None
 
+    @classmethod
+    def from_data(cls, data: Any):
+        return _from_data(cls, data)
+
     def __post_init__(self):
-        self.tenuredAsset = safe_object_from_dict(TenuredAsset, self.tenuredAsset)
-        self.householdMembers = [safe_object_from_dict(HouseholdMember, member) for member in self.householdMembers]
+        self.tenuredAsset = TenuredAsset.from_data(self.tenuredAsset)
+        if not all(isinstance(member, HouseholdMember) for member in self.householdMembers):
+            self.householdMembers = [HouseholdMember.from_data(member) for member in self.householdMembers]
+
 # --- END Tenure Table ---
+
 
 # --- Person Table ---
 @dataclass
@@ -62,6 +96,10 @@ class PersonTenure:
     endDate: str | None
     type: str | None
 
+    @classmethod
+    def from_data(cls, data: Any):
+        return cast(_from_data(cls, data), PersonTenure)
+
 
 @dataclass
 class Person:
@@ -75,7 +113,12 @@ class Person:
     tenures: list[PersonTenure]
 
     def __post_init__(self):
-        self.tenures = [safe_object_from_dict(PersonTenure, tenure) for tenure in self.tenures]
+        self.tenures = [PersonTenure.from_data(tenure) for tenure in self.tenures]
+
+    @classmethod
+    def from_data(cls, data: Any):
+        return cast(_from_data(cls, data), Person)
+
 # --- END Person Table ---
 
 
@@ -85,6 +128,10 @@ class ResponsibleEntity:
     id: str
     name: str | None
     responsibleType: str | None
+
+    @classmethod
+    def from_data(cls, data: Any):
+        return cast(_from_data(cls, data), ResponsibleEntity)
 
 
 @dataclass
@@ -98,8 +145,10 @@ class Patch:
     versionNumber: Decimal | None
 
     def __post_init__(self):
-        self.responsibleEntities = [safe_object_from_dict(ResponsibleEntity, entity) for entity in
-                                    self.responsibleEntities]
+        self.responsibleEntities = [ResponsibleEntity.from_data(entity) for entity in self.responsibleEntities]
+
+    def from_data(self):
+        return cast(_from_data(self, self), Patch)
 
 
 @dataclass
@@ -109,6 +158,10 @@ class AssetTenure:
     paymentReference: str | None
     type: str | None
     endOfTenureDate: str | None
+
+    @classmethod
+    def from_data(cls, data: Any):
+        return cast(_from_data(cls, data), AssetTenure)
 
 
 @dataclass
@@ -127,6 +180,7 @@ class Asset:
     versionNumber: Decimal | None
 
     def __post_init__(self):
-        self.tenure = safe_object_from_dict(AssetTenure, self.tenure)
-        self.patches = [safe_object_from_dict(Patch, patch) for patch in self.patches]
+        self.tenure = AssetTenure.from_data(self.tenure)
+        self.patches = [Patch.from_data(patch) for patch in self.patches]
+
 # --- END Asset Table ---
