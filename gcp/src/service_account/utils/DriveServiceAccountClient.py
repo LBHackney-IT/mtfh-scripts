@@ -206,6 +206,7 @@ class DriveServiceAccountClient:
         :param exclude_latest: If True, will exclude the latest file from deletion
         """
 
+
         # Get files matching queries
         query_lines = [] if query_lines is None else query_lines
         folder_parent_query_line = f"'{folder_id}' in parents"
@@ -214,11 +215,8 @@ class DriveServiceAccountClient:
 
         files = self.query_files(query_lines)
 
-        def file_created_time(file):
-            return file["createdTime"]
-
         if exclude_latest_n > 0:
-            files.sort(key=file_created_time, reverse=True)
+            files.sort(key=lambda file: file["createdTime"], reverse=True)
             # latest_n_files = max(files, key=lambda x: x["createdTime"])
             latest_n_files = files[0:exclude_latest_n]
             latest_n_filenames = [file["name"] for file in latest_n_files]
@@ -228,33 +226,40 @@ class DriveServiceAccountClient:
         files = [file for file in files if file["name"] != except_filename or except_filename not in file["name"]]
         total_size = sum([int(file["size"]) for file in files])
 
-        self.write_data_to_json(files)
-        # Get user confirmation for deletion
-        confirm(
-            f"Will delete {len(files)} files in {folder_id}, example: {files[0]}, see {self.output_filename} for all files, Confirm? ")
-
         if file_regex is None:
             file_regex = ".+"
 
+        if file_size_minimum > 0:
+            files = [file for file in files if int(file["size"]) >= file_size_minimum]
+
+        files = [file for file in files if re.match(file_regex, file["name"])]
+
+        self.write_data_to_json(files)
+        # Get user confirmation for deletion
+        folder_name = self.get_file_or_folder(folder_id)["name"]
+        print(f"Total size: {round(total_size / 10 ** 6, 2)}MB")
+        confirm(
+            f"Will delete {len(files)} files in {folder_name} ({folder_id}), example: {files[0]}, see {self.output_filename} for all files, Confirm? ")
+
+
         # Delete all captured files
         for file in files:
-            if int(file["size"]) >= file_size_minimum:
-                if re.match(file_regex, file["name"]):
-                    print(f"{file['name']} DELETING - ", f"{round(int(file['size']) / 10 ** 6, 2)}MB")
-                    self.delete_file(file["id"])
-    
-        print(f"Total size: {round(total_size / 10 ** 6, 2)}MB")
+            print(f"{file['name']} DELETING - ", f"{round(int(file['size']) / 10 ** 6, 2)}MB")
+            self.delete_file(file["id"])
 
-    def find_all_owned_files(self, extra_file_fields: list[str] = None, extra_fields: list[str] = None) -> list[dict]:
+
+    def find_all_owned_files(self, extra_query_lines: list[str] = None, extra_file_fields: list[str] = None, extra_fields: list[str] = None) -> list[dict]:
         """
         Finds all files owned by the user and the total size of all files
         :return: List of files
         """
+        if extra_query_lines is None:
+            extra_query_lines = []
         if extra_file_fields is None:
             extra_file_fields = []
         if extra_fields is None:
             extra_fields = []
-        query_lines = ["'me' in owners"]
+        query_lines = ["'me' in owners"] + extra_query_lines
         files = self.query_files(query_lines, extra_file_fields, extra_fields)
         total_size = sum([int(file["size"]) for file in files])
         print(f"Total size: {round(total_size / 10 ** 6, 2)}MB")
@@ -275,15 +280,22 @@ class DriveServiceAccountClient:
         print(f"Folder ID: {file.get('id')}")
         return file.get('id')
 
-    def download_folder_contents(self, folder_id: str, output_folder_name: str = "download"):
+    def download_folder_contents(self, folder_id: str, output_folder_name: str = "download", exclude_filenames: list[str] = None):
         """
         Downloads all files in a folder
         :param folder_id: Google ID of the folder
         :param output_folder_name: Folder name for the download
         """
+        if exclude_filenames is None:
+            exclude_filenames = []
+
         files = self.query_files([f"'{folder_id}' in parents"])
         progress_bar = ProgressBar(len(files))
         for i, file in enumerate(files):
+            if file["name"] in exclude_filenames:
+                print(f"Skipping {file['name']}")
+                continue
             if i % 10 == 0:
                 progress_bar.display(i)
+            print(f"Downloading {file['name']}")
             self.download(file["id"], output_folder_name)
