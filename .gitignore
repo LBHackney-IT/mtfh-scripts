@@ -5,6 +5,8 @@ __init__.py
 
 venv
 
+*.env
+
 *.txt
 !requirements.txt
 
