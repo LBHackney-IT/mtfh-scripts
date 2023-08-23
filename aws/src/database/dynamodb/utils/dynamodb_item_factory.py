@@ -1,10 +1,8 @@
-import re
 from typing import Any, Callable
 
-import dacite.exceptions
-from dacite import from_dict
 from mypy_boto3_dynamodb.service_resource import Table
 
+from aws.src.utils.safe_object_from_dict import safe_object_from_dict
 from aws.src.utils.filter_list_of_dictionaries_by_lambdas import filter_list_of_dictionaries_by_lambdas
 from aws.src.utils.logger import Logger
 
@@ -30,24 +28,6 @@ class DynamodbItemFactory:
         :return:
         """
 
-        def _convert_item_to_output_class(self, raw_item: dict) -> Any:
-            converted_item = None
-            for _ in range(2):
-                # Try to convert the item to the output class. If it fails, try to add default values for missing fields
-                try:
-                    converted_item = from_dict(data_class=self.output_class, data=raw_item)
-                    return converted_item
-                except dacite.exceptions.MissingValueError as e:
-                    missing_value = re.search(r'missing value for field "(.*)"', str(e)).group(1)
-                    asset_attributes = {attribute_name: attribute for attribute_name, attribute in
-                                        self.output_class.__annotations__.items()}
-                    raw_item[missing_value] = asset_attributes[missing_value]()
-                except dacite.exceptions.WrongTypeError as e:
-                    raise TypeError(
-                        f"WrongTypeError converting item with keys {list(raw_item.keys())} to {self.output_class.__name__} - {e}")
-            raise TypeError(
-                f"Could not convert item with keys {list(raw_item.keys())} to {self.output_class.__name__}")
-
         headings_filters = {} if headings_filters is None else headings_filters
         raw_items = self._get_all_items(headings_filters, item_limit)
         self._write_table_headings(raw_items, item_limit)
@@ -55,7 +35,7 @@ class DynamodbItemFactory:
             return raw_items
         items = []
         for raw_item in raw_items:
-            item = _convert_item_to_output_class(self, raw_item)
+            item = safe_object_from_dict(self.output_class, raw_item)
             items.append(item)
         return items
 
@@ -72,12 +52,7 @@ class DynamodbItemFactory:
         except KeyError:
             raise ValueError(f"Could not find item with {key} of {value} in table {self.table.name}")
 
-        try:
-            item = from_dict(data_class=self.output_class, data=raw_item)
-        except dacite.exceptions.MissingValueError as e:
-            raise TypeError(f"Error converting raw item to {self.output_class.__name__} - {e}")
-        except dacite.exceptions.WrongTypeError as e:
-            raise TypeError(f"Error converting raw item to {self.output_class.__name__} - {e}")
+        item = safe_object_from_dict(self.output_class, raw_item)
         return item
 
     def _get_all_items(self, headings_filters: dict[str:Callable] = None, item_limit: int = None):
