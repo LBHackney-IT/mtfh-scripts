@@ -1,12 +1,14 @@
-from typing import cast, Any
+from typing import Any, TypeVar, Type
 
 from _decimal import Decimal
 from dataclasses import dataclass
 
 from aws.src.utils.safe_object_from_dict import safe_object_from_dict
 
+T = TypeVar("T")
 
-def _from_data(cls, data: Any) -> object:
+
+def _dataclass_from_data(cls: Type[T], data: dict | T | None) -> T:
     """
     Converts a dict to a dataclass, or returns the dataclass if it is already one
     :param cls: The dataclass to convert to
@@ -34,7 +36,8 @@ class TenuredAsset:
 
     @classmethod
     def from_data(cls, data: Any):
-        return cast(_from_data(cls, data), TenuredAsset | None)
+        return _dataclass_from_data(cls, data)
+
 
 @dataclass
 class HouseholdMember:
@@ -47,7 +50,7 @@ class HouseholdMember:
 
     @classmethod
     def from_data(cls, data: Any):
-        return cast(_from_data(cls, data), HouseholdMember | None)
+        return _dataclass_from_data(cls, data)
 
 
 @dataclass
@@ -56,12 +59,12 @@ class Tenure:
     charges: dict | None
     endOfTenureDate: str | None
     evictionDate: str | None
-    householdMembers: list[HouseholdMember] | None
+    householdMembers: list[HouseholdMember]
     informHousingBenefitsForChanges: bool | None
     isMutalExchange: bool | None
     isSublet: bool | None
-    legacyReferences: list[dict] | None
-    notices: list[dict] | None
+    legacyReferences: list[dict]
+    notices: list[dict]
     paymentReference: str | None
     potentialEndDate: str | None
     startOfTenureDate: str | None
@@ -73,12 +76,21 @@ class Tenure:
 
     @classmethod
     def from_data(cls, data: Any):
-        return _from_data(cls, data)
+        return _dataclass_from_data(cls, data)
 
     def __post_init__(self):
+        if self.householdMembers is None:
+            self.householdMembers = []
+
+        if self.legacyReferences is None:
+            self.legacyReferences = []
+
+        if self.notices is None:
+            self.notices = []
+
         self.tenuredAsset = TenuredAsset.from_data(self.tenuredAsset)
-        if not all(isinstance(member, HouseholdMember) for member in self.householdMembers):
-            self.householdMembers = [HouseholdMember.from_data(member) for member in self.householdMembers]
+        self.householdMembers = [HouseholdMember.from_data(member) for member in self.householdMembers]
+
 
 # --- END Tenure Table ---
 
@@ -98,7 +110,7 @@ class PersonTenure:
 
     @classmethod
     def from_data(cls, data: Any):
-        return cast(_from_data(cls, data), PersonTenure)
+        return _dataclass_from_data(cls, data)
 
 
 @dataclass
@@ -113,11 +125,14 @@ class Person:
     tenures: list[PersonTenure]
 
     def __post_init__(self):
-        self.tenures = [PersonTenure.from_data(tenure) for tenure in self.tenures]
+        if self.personTypes is None:
+            self.personTypes = []
+        self.tenures = [PersonTenure.from_data(tenure) for tenure in self.tenures] if self.tenures is not None else []
 
     @classmethod
     def from_data(cls, data: Any):
-        return cast(_from_data(cls, data), Person)
+        return _dataclass_from_data(cls, data)
+
 
 # --- END Person Table ---
 
@@ -131,7 +146,7 @@ class ResponsibleEntity:
 
     @classmethod
     def from_data(cls, data: Any):
-        return cast(_from_data(cls, data), ResponsibleEntity)
+        return _dataclass_from_data(cls, data)
 
 
 @dataclass
@@ -145,10 +160,13 @@ class Patch:
     versionNumber: Decimal | None
 
     def __post_init__(self):
+        if self.responsibleEntities is None:
+            self.responsibleEntities = []
         self.responsibleEntities = [ResponsibleEntity.from_data(entity) for entity in self.responsibleEntities]
 
-    def from_data(self):
-        return cast(_from_data(self, self), Patch)
+    @classmethod
+    def from_data(cls, data):
+        return _dataclass_from_data(cls, data)
 
 
 @dataclass
@@ -161,7 +179,7 @@ class AssetTenure:
 
     @classmethod
     def from_data(cls, data: Any):
-        return cast(_from_data(cls, data), AssetTenure)
+        return _dataclass_from_data(cls, data)
 
 
 @dataclass
@@ -180,7 +198,15 @@ class Asset:
     versionNumber: Decimal | None
 
     def __post_init__(self):
+        if self.patches is None:
+            self.patches = []
+
         self.tenure = AssetTenure.from_data(self.tenure)
-        self.patches = [Patch.from_data(patch) for patch in self.patches]
+        if not all(isinstance(patch, Patch) for patch in self.patches):
+            self.patches = [Patch.from_data(patch) for patch in self.patches]
+
+    @classmethod
+    def from_data(cls, data):
+        return _dataclass_from_data(cls, data)
 
 # --- END Asset Table ---

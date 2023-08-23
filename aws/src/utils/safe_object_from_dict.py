@@ -1,4 +1,6 @@
-from typing import T
+from typing import TypeVar
+
+T = TypeVar("T")
 
 
 def safe_object_from_dict(object_type: type[T], data: dict) -> T:
