@@ -31,29 +31,30 @@ The scripts use [SQLAlchemy V2](https://www.sqlalchemy.org/) as an ORM
 - **On MacOS/Linux** you will need to install `unixodbc` with your package manager or otherwise
 
 Example usage:
+
 ```python
-from aws.src.database.rds.cautionary_alerts.entities.PropertyAlertNew import PropertyAlertNew as CautionaryAlert
-from aws.src.database.rds.cautionary_alerts.connect_to_cautionary_alerts import connect_to_cautionary_alerts_db
+from aws.src.database.rds.uh_mirror.entities.PropertyAlertNew import PropertyAlertNew as CautionaryAlert
+from aws.src.database.rds.uh_mirror.session_for_uh_mirror import session_for_uh_mirror
 from enums.enums import Stage
 
 
 def main():
   session_stage = Stage.BASE_STAGING
-  
+
   # Expire on commit means that objects can only be accessed within the "with" clause and remain connected to the db
-  CaSession = connect_to_cautionary_alerts_db(session_stage, expire_on_commit=True)
+  CaSession = session_for_uh_mirror(session_stage, expire_on_commit=True)
   with CaSession.begin() as session:
-      alerts = session.query(CautionaryAlert) \
-          .where(CautionaryAlert.alert_id.is_not(None)) \
-          .where(CautionaryAlert.person_name.contains("A")) \
-          .limit(10) \
-          .all()
-  
-      # Use the entity object directly
-      print(alerts[0].person_name)
-  
-      # Convert to a dictionary
-      dict_alert = alerts[0].to_dict()["address"]
-      
-      # Changes are committed and session is closed after the "with" clause
+    alerts = session.query(CautionaryAlert) \
+    .where(CautionaryAlert.alert_id.is_not(None)) \
+    .where(CautionaryAlert.person_name.contains("A")) \
+    .limit(10) \
+    .all()
+
+  # Use the entity object directly
+  print(alerts[0].person_name)
+
+  # Convert to a dictionary
+  dict_alert = alerts[0].to_dict()["address"]
+
+  # Changes are committed and session is closed after the "with" clause
 ```

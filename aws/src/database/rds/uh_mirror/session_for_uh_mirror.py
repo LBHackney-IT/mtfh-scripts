@@ -5,8 +5,8 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session as SA_Session
 from sqlalchemy.orm.exc import DetachedInstanceError
 from psycopg2 import connect as psycopg2_connect
-from aws.src.database.rds.cautionary_alerts.entities.PropertyAlertNew \
-    import PropertyAlertNew as CautionaryAlert, Base as CautionaryAlertsBase
+from aws.src.database.rds.uh_mirror.entities.PropertyAlertNew \
+    import PropertyAlertNew, Base as UHMirrorBase
 
 from mypy_boto3_ssm import SSMClient
 
@@ -16,7 +16,7 @@ from enums.enums import Stage
 from random import randint
 
 
-def connect_to_cautionary_alerts_db(stage: Stage, expire_on_commit=True, local_port=5432) -> sessionmaker[SA_Session]:
+def session_for_uh_mirror(stage: Stage, expire_on_commit=True, local_port=5432) -> sessionmaker[SA_Session]:
     """
     Connect to cautionary alerts database
     :param stage: Stage to connect to
@@ -34,7 +34,7 @@ def connect_to_cautionary_alerts_db(stage: Stage, expire_on_commit=True, local_p
 
     connection_string = f"postgresql://{username}:{password}@localhost:{local_port}/uh_mirror"
     engine = create_engine("postgresql+psycopg2://", creator=lambda: psycopg2_connect(connection_string), echo=True)
-    CautionaryAlertsBase.metadata.create_all(bind=engine)
+    UHMirrorBase.metadata.create_all(bind=engine)
 
     Session = sessionmaker(bind=engine, expire_on_commit=expire_on_commit)
 
@@ -48,11 +48,11 @@ if __name__ == "__main__":
     session_stage = Stage.BASE_STAGING
 
     # Expire on commit means that objects can only be accessed within the "with" clause and remain connected to the db
-    CaSession = connect_to_cautionary_alerts_db(session_stage, expire_on_commit=True)
+    CaSession = session_for_uh_mirror(session_stage, expire_on_commit=True)
     with CaSession.begin() as session:
-        alerts = session.query(CautionaryAlert) \
-            .where(CautionaryAlert.alert_id.is_not(None)) \
-            .where(CautionaryAlert.person_name.contains("A")) \
+        alerts = session.query(PropertyAlertNew) \
+            .where(PropertyAlertNew.alert_id.is_not(None)) \
+            .where(PropertyAlertNew.person_name.contains("A")) \
             .limit(10) \
             .all()
 
@@ -69,10 +69,10 @@ if __name__ == "__main__":
         print("Cannot access object outside of 'with' clause")
 
     # With expire_on_commit set to False, objects can be accessed outside of the "with" clause, but will not sync to db
-    CaSession = connect_to_cautionary_alerts_db(session_stage, expire_on_commit=False)
+    CaSession = session_for_uh_mirror(session_stage, expire_on_commit=False)
     with CaSession.begin() as session:
-        alerts = session.query(CautionaryAlert) \
-            .filter(CautionaryAlert.alert_id == "5d31e525-99af-4264-9e4f-891b1828043b") \
+        alerts = session.query(PropertyAlertNew) \
+            .filter(PropertyAlertNew.alert_id == "5d31e525-99af-4264-9e4f-891b1828043b") \
             .all()
 
         alert = alerts[0]

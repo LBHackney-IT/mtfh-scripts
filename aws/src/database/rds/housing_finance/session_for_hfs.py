@@ -4,7 +4,6 @@ Note: Ensure to install unixodbc to be able to use pyodbc
 
 import pyodbc
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, Session as SQLAlchemySession
 
 from aws.src.database.rds.housing_finance.entities.GoogleFileSetting import Base as HousingFinanceBase
 from mypy_boto3_ssm import SSMClient
@@ -15,7 +14,7 @@ from aws.src.database.rds.housing_finance.entities.GoogleFileSetting import Goog
 from enums.enums import Stage
 
 
-def connect_to_hfs_db(stage: Stage, expire_on_commit=True, local_port=1433) -> sessionmaker[SA_Session]:
+def session_for_hfs(stage: Stage, expire_on_commit=True, local_port=1433) -> sessionmaker[SA_Session]:
     """
     Connect to cautionary alerts database
     :param stage: Stage to connect to
@@ -37,7 +36,7 @@ def connect_to_hfs_db(stage: Stage, expire_on_commit=True, local_port=1433) -> s
     except IndexError:
         raise IndexError("No ODBC Driver 17 for SQL Server found. Please install the driver and try again.")
 
-    connection_string = f"DRIVER={driver};SERVER=127.0.0.1,1433;DATABASE=sow2b;UID={username};PWD={password}"
+    connection_string = f"DRIVER={driver};SERVER=127.0.0.1,{local_port};DATABASE=sow2b;UID={username};PWD={password}"
     engine = create_engine("mssql+pyodbc://", creator=lambda: pyodbc.connect(connection_string), echo=True)
     HousingFinanceBase.metadata.create_all(bind=engine)
 
@@ -50,7 +49,7 @@ if __name__ == "__main__":
     """
     Example usage
     """
-    HfsSession = connect_to_hfs_db(Stage.HOUSING_STAGING)
+    HfsSession = session_for_hfs(Stage.HOUSING_STAGING)
     with HfsSession.begin() as session:
         res = session.query(GoogleFileSetting).where(GoogleFileSetting.Label == "ChargesOLD").all()
         print(res[0].GoogleIdentifier)
