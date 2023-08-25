@@ -1,15 +1,16 @@
 """
 Connect to RDS instance via port forwarding and execute SQL queries
 """
+from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session as SA_Session
 from sqlalchemy.orm.exc import DetachedInstanceError
-
-from aws.src.database.rds.cautionary_alerts.entities.PropertyAlertNew import PropertyAlertNew as CautionaryAlert
+from psycopg2 import connect as psycopg2_connect
+from aws.src.database.rds.cautionary_alerts.entities.PropertyAlertNew \
+    import PropertyAlertNew as CautionaryAlert, Base as CautionaryAlertsBase
 
 from mypy_boto3_ssm import SSMClient
 
 from aws.src.authentication.generate_aws_resource import generate_aws_service
-from aws.src.database.rds.utils.connect_to_local_db import connect_to_local_db
 from enums.enums import Stage
 
 from random import randint
@@ -31,7 +32,11 @@ def connect_to_cautionary_alerts_db(stage: Stage, expire_on_commit=True, local_p
     username = ssm.get_parameter(Name=pg_username_path)['Parameter']['Value']
     password = ssm.get_parameter(Name=pg_password_path)['Parameter']['Value']
 
-    Session = connect_to_local_db("uh_mirror", username, password, "postgresql", expire_on_commit, local_port)
+    connection_string = f"postgresql://{username}:{password}@localhost:{local_port}/uh_mirror"
+    engine = create_engine("postgresql+psycopg2://", creator=lambda: psycopg2_connect(connection_string), echo=True)
+    CautionaryAlertsBase.metadata.create_all(bind=engine)
+
+    Session = sessionmaker(bind=engine, expire_on_commit=expire_on_commit)
 
     return Session
 

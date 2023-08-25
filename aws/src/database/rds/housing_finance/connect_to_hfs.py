@@ -2,12 +2,16 @@
 Note: Ensure to install unixodbc to be able to use pyodbc
 """
 
+import pyodbc
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker, Session as SQLAlchemySession
+
+from aws.src.database.rds.housing_finance.entities.GoogleFileSetting import Base as HousingFinanceBase
 from mypy_boto3_ssm import SSMClient
 from sqlalchemy.orm import sessionmaker, Session as SA_Session
 
 from aws.src.authentication.generate_aws_resource import generate_aws_service
 from aws.src.database.rds.housing_finance.entities.GoogleFileSetting import GoogleFileSetting
-from aws.src.database.rds.utils.connect_to_local_db import connect_to_local_db
 from enums.enums import Stage
 
 
@@ -27,7 +31,17 @@ def connect_to_hfs_db(stage: Stage, expire_on_commit=True, local_port=1433) -> s
     username = ssm.get_parameter(Name=pg_username_path)['Parameter']['Value']
     password = ssm.get_parameter(Name=pg_password_path)['Parameter']['Value']
 
-    Session = connect_to_local_db("sow2b", username, password, "mssql", expire_on_commit, local_port)
+    try:
+        # Find first locally installed driver with Sql Server in the name
+        driver = [driver for driver in pyodbc.drivers() if "SQL Server" in driver][0]
+    except IndexError:
+        raise IndexError("No ODBC Driver 17 for SQL Server found. Please install the driver and try again.")
+
+    connection_string = f"DRIVER={driver};SERVER=127.0.0.1,1433;DATABASE=sow2b;UID={username};PWD={password}"
+    engine = create_engine("mssql+pyodbc://", creator=lambda: pyodbc.connect(connection_string), echo=True)
+    HousingFinanceBase.metadata.create_all(bind=engine)
+
+    Session = sessionmaker(bind=engine, expire_on_commit=expire_on_commit)
 
     return Session
 
