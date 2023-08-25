@@ -1,10 +1,10 @@
 """
 Connect to RDS instance via port forwarding and execute SQL queries
 """
-from sqlalchemy.orm import sessionmaker, Session as SQLAlchemySession
+from sqlalchemy.orm import sessionmaker, Session as SA_Session
 from sqlalchemy.orm.exc import DetachedInstanceError
 
-from aws.src.database.entities.PropertyAlertNewEntity import PropertyAlertNewEntity as CautionaryAlert, Base
+from aws.src.database.rds.cautionary_alerts.entities.PropertyAlertNew import PropertyAlertNew as CautionaryAlert
 
 from mypy_boto3_ssm import SSMClient
 
@@ -15,7 +15,7 @@ from enums.enums import Stage
 from random import randint
 
 
-def connect_to_cautionary_alerts_db(stage: Stage, expire_on_commit=True, local_port=5432) -> sessionmaker[SQLAlchemySession]:
+def connect_to_cautionary_alerts_db(stage: Stage, expire_on_commit=True, local_port=5432) -> sessionmaker[SA_Session]:
     """
     Connect to cautionary alerts database
     :param stage: Stage to connect to
@@ -24,9 +24,8 @@ def connect_to_cautionary_alerts_db(stage: Stage, expire_on_commit=True, local_p
     """
     assert isinstance(stage, Stage), f"stage must be of type Stage, not {type(stage)}"
 
-    path_stage = stage.to_path_variable()
-    pg_username_path = f"/uh-api/{path_stage}/postgres-username"
-    pg_password_path = f"/uh-api/{path_stage}/postgres-password"
+    pg_username_path = f"/uh-api/{stage.to_env_name()}/postgres-username"
+    pg_password_path = f"/uh-api/{stage.to_env_name()}/postgres-password"
 
     ssm: SSMClient = generate_aws_service('ssm', stage, 'client')
     username = ssm.get_parameter(Name=pg_username_path)['Parameter']['Value']

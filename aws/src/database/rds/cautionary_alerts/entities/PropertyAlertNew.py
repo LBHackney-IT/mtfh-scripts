@@ -9,7 +9,7 @@ class Base(MappedAsDataclass, DeclarativeBase):
 
 
 @dataclass
-class PropertyAlertNewEntity(Base):
+class PropertyAlertNew(Base):
     __tablename__ = "PropertyAlertNew"
     __table_args__ = {"schema": "dbo"}
 
