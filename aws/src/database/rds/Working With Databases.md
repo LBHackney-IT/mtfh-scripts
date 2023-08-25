@@ -20,10 +20,40 @@
 ## Using a  Python script
 View the `connect_to_{db_name}` files in the database directories for examples of how to connect to and use the database in Python
 
-The scripts use SQLAlchemy as an ORM and psycopg2 as a driver for Postgres and pyodbc as a driver for Sql Server
+The scripts use [SQLAlchemy V2](https://www.sqlalchemy.org/) as an ORM
+
+**Note:** Ensure that the Stage enum you use in the script matches the stage you are port forwarding to from the Makefile
 
 ### SQL Server Driver Setup
 - You will need the ODBC Driver for Sql Server Version 17 installed. Version tested: **17.10.4.1**
   - [Windows](https://learn.microsoft.com/en-us/sql/connect/odbc/download-odbc-driver-for-sql-server?view=sql-server-ver16#version-17)
   - [MacOS/Linux](https://learn.microsoft.com/en-us/sql/connect/odbc/linux-mac/installing-the-microsoft-odbc-driver-for-sql-server)
 - **On MacOS/Linux** you will need to install `unixodbc` with your package manager or otherwise
+
+Example usage:
+```python
+from aws.src.database.rds.cautionary_alerts.entities.PropertyAlertNew import PropertyAlertNew as CautionaryAlert
+from aws.src.database.rds.cautionary_alerts.connect_to_cautionary_alerts import connect_to_cautionary_alerts_db
+from enums.enums import Stage
+
+
+def main():
+  session_stage = Stage.BASE_STAGING
+  
+  # Expire on commit means that objects can only be accessed within the "with" clause and remain connected to the db
+  CaSession = connect_to_cautionary_alerts_db(session_stage, expire_on_commit=True)
+  with CaSession.begin() as session:
+      alerts = session.query(CautionaryAlert) \
+          .where(CautionaryAlert.alert_id.is_not(None)) \
+          .where(CautionaryAlert.person_name.contains("A")) \
+          .limit(10) \
+          .all()
+  
+      # Use the entity object directly
+      print(alerts[0].person_name)
+  
+      # Convert to a dictionary
+      dict_alert = alerts[0].to_dict()["address"]
+      
+      # Changes are committed and session is closed after the "with" clause
+```
