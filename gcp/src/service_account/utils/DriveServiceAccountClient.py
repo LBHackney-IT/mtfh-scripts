@@ -9,6 +9,8 @@ from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload, MediaIoBaseDownload
 from aws.src.utils.progress_bar import ProgressBar
 
+from gcp.src.service_account.utils.confirm import confirm
+
 
 def confirm(prompt: str) -> bool:
     """
@@ -175,6 +177,7 @@ class DriveServiceAccountClient:
         except errors.HttpError as error:
             print(f'An error occurred deleting {file_id}:\n>>> {error}')
 
+
     def delete_matching_files_in_folder(self, folder_id, query_lines: list[str] = None, exclude_latest_n: int = 7,
                                         file_regex: str = None, file_size_minimum: int = 0):
         """
@@ -202,6 +205,7 @@ class DriveServiceAccountClient:
             print(f"Excluding latest files: {latest_n_filenames}")
 
         total_size = sum([int(file["size"]) for file in files])
+
 
         if file_regex is None:
             file_regex = ".+"
@@ -246,3 +250,4 @@ class DriveServiceAccountClient:
         total_size = sum([int(file["size"]) for file in files])
         print(f"Total size: {round(total_size / 10 ** 6, 2)}MB")
         return files
+

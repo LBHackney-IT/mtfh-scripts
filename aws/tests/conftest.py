@@ -5,8 +5,6 @@ import pytest
 from moto import mock_dynamodb
 import random
 
-from src.utils.logger import Logger
-
 
 @pytest.fixture
 def use_mock_dynamodb():

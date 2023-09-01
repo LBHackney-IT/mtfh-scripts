@@ -40,7 +40,7 @@ def update_assets_with_additional_data(asset_table: Table, assets_from_csv: list
     
     """
     update_count = 0
-    progress_bar = ProgressBar(len(assets_from_csv), bar_length=len(assets_from_csv) // 10)
+    progress_bar = ProgressBar(len(assets_from_csv))
     for i, csv_asset_item in enumerate(assets_from_csv):
         if i % 100 == 0:
             progress_bar.display(i)
