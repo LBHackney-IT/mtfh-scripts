@@ -26,13 +26,7 @@ def confirm(prompt: str) -> bool:
             print("Invalid response. Please enter y or n.")
 
 
-
 class DriveServiceAccountClient:
-    """
-    To use, you must get the credentials JSON string e.g. from Parameter Store, save in the same directory as credentials.json
-    Ensure that you save your credentials as exactly "credentials.json" to have them be gitignored
-    """
-
     def __init__(self, credentials_json: str | dict):
         if type(credentials_json) == str:
             credentials_json = json.loads(credentials_json)
@@ -47,16 +41,6 @@ class DriveServiceAccountClient:
         creds = service_account.Credentials.from_service_account_info(credentials_json, scopes=scopes)
         service = build('drive', 'v3', credentials=creds)
         return service
-
-    def write_data_to_json(self, data: list | dict):
-        """
-        Writes JSON data to a local file
-        :param data: JSON data / dict to write to file
-        :param filename: Name or path of file to write output to
-        """
-        with open(self.output_filename, "w") as outfile:
-            json.dump(data, outfile)
-            print(f"Data written to {self.output_filename}")
 
     def get_file_or_folder(self, file_id, fields: list[str] = None) -> dict:
         """
@@ -115,7 +99,7 @@ class DriveServiceAccountClient:
             try:
                 result = response.execute()
                 all_results += result.get("files")
-                page_token = result.get('nextPageToken', None)
+                page_token = result.get("nextPageToken")
                 if page_token is None:
                     break
             except errors.HttpError:
@@ -124,19 +108,16 @@ class DriveServiceAccountClient:
         print(f"{len(all_results)} files found:")
         return all_results
 
-    def upload(self, filename: str, mimetype: str, folder_id: str = None) -> str:
+    def upload(self, filename: str, mimetype: str, folder_id: str) -> str:
         """
         Uploads a local file to Google Drive
         See https://developers.google.com/drive/api/guides/folder#create_a_file_in_a_folder
         :param filename: Local file path to open for upload
         :param mimetype: Example: "text/csv" Consult https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types/Common_types
-        :param folder_id: Google ID of folder to upload to. If None, will upload to the root directory.
+        :param folder_id: Google ID of folder to upload to.
         :return:
         """
-
-        file_metadata = {'name': filename}
-        if folder_id:
-            file_metadata["parent"] = folder_id
+        file_metadata = {'name': filename, "parent": folder_id}
 
         try:
             media = MediaFileUpload(filename, mimetype=mimetype)
@@ -146,7 +127,7 @@ class DriveServiceAccountClient:
         except errors.HttpError as error:
             print(F'An error occurred: {error}')
 
-    def download(self, file_id: str, output_folder_name: str = "download"):
+    def download(self, file_id: str):
         """
         Downloads a file from Google Drive
         See https://developers.google.com/drive/api/v3/manage-downloads
@@ -166,18 +147,20 @@ class DriveServiceAccountClient:
         except errors.HttpError as error:
             print(f"An error occurred: {error}")
 
-        os.renames(filename, f"out/{output_folder_name}/{filename}")
+        os.renames(filename, f"out/download/{filename}")
 
-    def get_file_parent_folder(self, file_id: str) -> dict:
+    def download_folder_contents(self, folder_id: str):
         """
-        Finds the Google ID of the folder that a file is within
-        :param file_id: ID of the file
-        :return: Parent Folder ID
+        Downloads all files in a folder
+        :param folder_id: Google ID of the folder
         """
-        # I think you can query any attributes from here:
-        # https://developers.google.com/drive/api/v2/reference/files
-        response = self.get_file_or_folder(file_id, fields="parents")
-        return response
+        files = self.query_files([f"'{folder_id}' in parents"])
+        progress_bar = ProgressBar(len(files))
+        for i, file in enumerate(files):
+            if i % 10 == 0:
+                progress_bar.display(i)
+            print(f"Downloading {file['name']}")
+            self.download(file["id"])
 
     def delete_file(self, file_id: str):
         """
@@ -190,22 +173,18 @@ class DriveServiceAccountClient:
             files.delete(fileId=file_id).execute()
             print(f"Deleted: {file_id}")
         except errors.HttpError as error:
-            f'An error occurred deleting {file_id}:\n>>> {error}'
-        except:
-            raise
+            print(f'An error occurred deleting {file_id}:\n>>> {error}')
 
-    def delete_matching_files_in_folder(self, folder_id, query_lines: list[str] = None, exclude_latest_n: int = 7, file_regex=None,
-                                        file_size_minimum: int = 0, except_filename: str = None):
+    def delete_matching_files_in_folder(self, folder_id, query_lines: list[str] = None, exclude_latest_n: int = 7,
+                                        file_regex: str = None, file_size_minimum: int = 0):
         """
-        Deletes all files matching a specific query as in query_files, uses filename regex and file_size_minimum as safeguards
+        Deletes all files in a folder matching a specific query as in query_files, with related safeguards
         :param folder_id: ID of folder to find files under
         :param query_lines: List of filters for files, see https://developers.google.com/drive/api/guides/search-files
+        :param exclude_latest_n: Will exclude the latest {number} files from deletion, default 7
         :param file_regex: Regex the file names must match
         :param file_size_minimum: Minimum file size
-        :param except_filename: Filename to exclude from deletion
-        :param exclude_latest: If True, will exclude the latest file from deletion
         """
-
 
         # Get files matching queries
         query_lines = [] if query_lines is None else query_lines
@@ -217,13 +196,11 @@ class DriveServiceAccountClient:
 
         if exclude_latest_n > 0:
             files.sort(key=lambda file: file["createdTime"], reverse=True)
-            # latest_n_files = max(files, key=lambda x: x["createdTime"])
             latest_n_files = files[0:exclude_latest_n]
             latest_n_filenames = [file["name"] for file in latest_n_files]
             files = [file for file in files if file["name"] not in latest_n_filenames]
             print(f"Excluding latest files: {latest_n_filenames}")
 
-        files = [file for file in files if file["name"] != except_filename or except_filename not in file["name"]]
         total_size = sum([int(file["size"]) for file in files])
 
         if file_regex is None:
@@ -234,23 +211,28 @@ class DriveServiceAccountClient:
 
         files = [file for file in files if re.match(file_regex, file["name"])]
 
-        self.write_data_to_json(files)
+        with open(self.output_filename, "w") as outfile:
+            json.dump(files, outfile)
+            print(f"Data written to {self.output_filename}")
+
         # Get user confirmation for deletion
         folder_name = self.get_file_or_folder(folder_id)["name"]
         print(f"Total size: {round(total_size / 10 ** 6, 2)}MB")
         confirm(
-            f"Will delete {len(files)} files in {folder_name} ({folder_id}), example: {files[0]}, see {self.output_filename} for all files, Confirm? ")
-
+            f"Will delete {len(files)} files in {folder_name} ({folder_id}), "
+            f"example: {files[0]}, see {self.output_filename} for all files, Confirm? ")
 
         # Delete all captured files
         for file in files:
             print(f"{file['name']} DELETING - ", f"{round(int(file['size']) / 10 ** 6, 2)}MB")
             self.delete_file(file["id"])
 
-
-    def find_all_owned_files(self, extra_query_lines: list[str] = None, extra_file_fields: list[str] = None, extra_fields: list[str] = None) -> list[dict]:
+    def find_all_owned_files(self, extra_query_lines: list[str] = None, extra_file_fields: list[str] = None,
+                             extra_fields: list[str] = None) -> list[dict]:
         """
         Finds all files owned by the user and the total size of all files
+        :extra_query_lines: Extra query lines to filter files by, see query_files method
+        :extra_file_fields: Extra fields to include in the file response, see query_files method
         :return: List of files
         """
         if extra_query_lines is None:
@@ -264,38 +246,3 @@ class DriveServiceAccountClient:
         total_size = sum([int(file["size"]) for file in files])
         print(f"Total size: {round(total_size / 10 ** 6, 2)}MB")
         return files
-
-    def create_folder(self, folder_name: str, parent_folder_id: str = None) -> str:
-        """
-        Creates a folder
-        :return: Google ID of the folder
-        """
-        file_metadata = {
-            'name': folder_name,
-            'mimeType': 'application/vnd.google-apps.folder',
-            'parents': [parent_folder_id]
-        }
-        file = self.service_read_write.files().create(body=file_metadata,
-                                                      fields='id').execute()
-        print(f"Folder ID: {file.get('id')}")
-        return file.get('id')
-
-    def download_folder_contents(self, folder_id: str, output_folder_name: str = "download", exclude_filenames: list[str] = None):
-        """
-        Downloads all files in a folder
-        :param folder_id: Google ID of the folder
-        :param output_folder_name: Folder name for the download
-        """
-        if exclude_filenames is None:
-            exclude_filenames = []
-
-        files = self.query_files([f"'{folder_id}' in parents"])
-        progress_bar = ProgressBar(len(files))
-        for i, file in enumerate(files):
-            if file["name"] in exclude_filenames:
-                print(f"Skipping {file['name']}")
-                continue
-            if i % 10 == 0:
-                progress_bar.display(i)
-            print(f"Downloading {file['name']}")
-            self.download(file["id"], output_folder_name)

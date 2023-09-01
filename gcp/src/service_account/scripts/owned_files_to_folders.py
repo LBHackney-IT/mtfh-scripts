@@ -21,7 +21,7 @@ def owned_files_and_folders_to_tsv(
             for item in items:
                 f.write("\t".join([str(item[heading]) for heading in headings]) + "\n")
 
-    owned_files: list[dict] = service_account.find_all_owned_files(extra_file_fields, extra_folder_fields)
+    owned_files: list[dict] = service_account.find_all_owned_files(None, extra_file_fields, extra_folder_fields)
 
     progress_bar = ProgressBar(len(owned_files))
 
@@ -65,7 +65,7 @@ def owned_files_and_folders_to_tsv(
 
     def perms_string_for_role(permissions: list[dict], role: str) -> str:
         emails = [perm.get('emailAddress') for perm in permissions if
-                perm.get('role') == role and not perm.get('deleted')]
+                  perm.get('role') == role and not perm.get('deleted')]
         if emails:
             return ", ".join([email for email in emails if email])
         else:
