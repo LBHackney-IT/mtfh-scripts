@@ -1,8 +1,14 @@
-def confirm(question: str, kill=True):
-    confirmation = input(f"{question} (y/n): ").lower() not in ["y", "yes"]
-    if confirmation and kill:
-        print("Exiting")
-        exit()
-    if confirmation:  # No kill / exit
-        return False
-    return True
+def confirm(prompt: str) -> bool:
+    """
+    Prompts user to confirm an action
+    :param prompt: Prompt to show user
+    :return: True if user confirms, False if user denies
+    """
+    while True:
+        response = input(f"{prompt} (y/n): ")
+        if response.lower() in ["y", "yes"]:
+            return True
+        elif response.lower() in ["n", "no"]:
+            return False
+        else:
+            print("Invalid response. Please enter y or n.")
