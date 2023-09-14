@@ -20,5 +20,3 @@ venv
 *.json
 
 config.py
-
-lbh_owned_assets_preview.py
