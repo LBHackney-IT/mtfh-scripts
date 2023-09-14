@@ -32,7 +32,6 @@ class Config:
 # the final output (displaying any assets that, for whatever reason, -could not be updated).
 
 def generate_lbh_owned_assets_csv(asset_table: Table, assets_from_csv: list[dict], logger: Logger) -> int:
-    update_count = 0
     progress_bar = ProgressBar(len(assets_from_csv))
 
     assets_not_found = []
@@ -99,9 +98,6 @@ def generate_lbh_owned_assets_csv(asset_table: Table, assets_from_csv: list[dict
                 # ADD CHILDREN ASSETS TO CSV
                 for child_asset in children_assets:
                     add_asset_to_csv(assets_in_csv_file, child_asset, writer, logger)
-
-                break
-                update_count += 1
 
             else:
                 assets_not_found.append(asset_prop_ref)
