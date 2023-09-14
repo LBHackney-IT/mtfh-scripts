@@ -8,13 +8,9 @@
 # from aws.src.database.multi_table.amend_tenure import main as amend_tenure_main
 # from aws.src.database.multi_table.find_persons_for_properties import main as find_persons_for_properties_main
 
-from aws.src.database.dynamodb.scripts.asset_table.lbh_owned_assets_preview import main as create_csv_test
 
 if __name__ == "__main__":
     # 1) IMPORTANT: Uncomment and click into functions in the imports to view definitions and edit config
     #     - e.g. set STAGE to "development" or "production"
     # 2) Call functions here
-
-    create_csv_test()
-
     pass
