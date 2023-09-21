@@ -15,5 +15,5 @@ if __name__ == "__main__":
     # 1) IMPORTANT: Uncomment and click into functions in the imports to view definitions and edit config
     #     - e.g. set STAGE to "development" or "production"
     # 2) Call functions here
-    scan_and_patch_new_phone_numbers_main()
+    
     pass
