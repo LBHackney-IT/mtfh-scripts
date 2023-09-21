@@ -31,14 +31,14 @@ class Config:
 # so that after the script has run, the terminal will not close, and you will be able to view 
 # the final output (displaying any assets that, for whatever reason, -could not be updated).
 
-def generate_lbh_owned_assets_csv(asset_table: Table, assets_from_csv: list[dict], logger: Logger) -> int:
+def generate_lbh_owned_assets_csv(asset_table: Table, assets_from_csv: list[dict], writer, logger: Logger) -> int:
     progress_bar = ProgressBar(len(assets_from_csv))
 
     assets_not_found = []
     assets_in_csv_file = []
 
-    output_csv_file_file_path = 'aws/src/database/data/output/output-test.csv'
-
+    # Add columns with headers
+    writer.writerow(['PropRef', 'AssetType', 'Address', 'Postcode'])
 
     for i, csv_asset_item in enumerate(assets_from_csv):        
         if i % 100 == 0:
@@ -46,17 +46,11 @@ def generate_lbh_owned_assets_csv(asset_table: Table, assets_from_csv: list[dict
 
         # Get AssetId/PropRef from CSV file
         asset_prop_ref = str(csv_asset_item["PropRef"])
+        print(f"Asset {asset_prop_ref}")
 
         # If AssetId is less than 8 digits, left pad it with 0s until AssetId is composed of 8 digits
         if len(asset_prop_ref ) < 8:
             asset_prop_ref  = asset_prop_ref .rjust(8, '0')
-
-        # Create/reference CSV file
-        with open(output_csv_file_file_path, 'w', newline='') as csvfile:
-            writer = csv.writer(csvfile)
-
-            # Add columns with headers
-            writer.writerow(['PropRef', 'AssetType', 'Address', 'Postcode'])
 
             # Get asset object, using the AssetId, from DynamoDb
             db_data_retrieve = get_by_secondary_index(asset_table, "AssetId", "assetId", asset_prop_ref)
@@ -65,7 +59,7 @@ def generate_lbh_owned_assets_csv(asset_table: Table, assets_from_csv: list[dict
                 # If we successfully retrieve data, we can access the asset object
                 asset_db = db_data_retrieve[0]
 
-                # Set endpoint URL 
+                # Set endpoint URL for retrieving children assets
                 endpoint_url = os.getenv("API_ENDPOINT")
                 
                 # Set auth token
@@ -82,7 +76,8 @@ def generate_lbh_owned_assets_csv(asset_table: Table, assets_from_csv: list[dict
                 children_assets = api_response["childAssets"]
                 
                 # ADD CURRENT ASSET TO CSV
-                add_asset_to_csv(assets_in_csv_file, asset_db, writer, logger)
+                # print(f"Adding current asset {asset_db['assetId']}")
+                add_asset_to_csv(assets_in_csv_file, asset_db, writer, logger, "CURRENT")
 
                 # ADD PARENT ASSET TO CSV (if we have parent data)
                 if (asset_db['assetLocation'] and len(asset_db['assetLocation']['parentAssets']) > 0):   
@@ -93,21 +88,20 @@ def generate_lbh_owned_assets_csv(asset_table: Table, assets_from_csv: list[dict
                     if parent_asset_db is None:
                         logger.log(f"Cannot find parent asset {asset_db['assetLocation']['parentAssets'][0]['id']} for Asset ID {asset_prop_ref}")
                     else:
-                        add_asset_to_csv(assets_in_csv_file, parent_asset_db, writer, logger)
+                        # print(f"Adding parent of current asset {asset_db['assetId']} with PropRef {parent_asset_db['assetId']}")
+                        add_asset_to_csv(assets_in_csv_file, parent_asset_db, writer, logger, "PARENT")
 
-                # ADD CHILDREN ASSETS TO CSV
-                for child_asset in children_assets:
-                    add_asset_to_csv(assets_in_csv_file, child_asset, writer, logger)
-
+                if len(children_assets) > 0:
+                    # ADD CHILDREN ASSETS TO CSV
+                    for child_asset in children_assets:
+                        # print(f"Adding child of current asset {asset_db['assetId']} with PropRef {child_asset['assetId']}")
+                        add_asset_to_csv(assets_in_csv_file, child_asset, writer, logger, "CHILD")
+                # else:
+                #     print(f"No children found for current asset id {asset_db['assetId']}")
+                
             else:
                 assets_not_found.append(asset_prop_ref)
                 logger.log(f'Cannot find asset for Asset ID {asset_prop_ref}')
-    
-    # Final output
-    if (len(assets_not_found) > 0):
-        logger.log("Script completed. The following assets could not be found in the database:")
-        for asset_id in assets_not_found:
-            logger.log(asset_id)
 
     return assets_not_found, len(assets_in_csv_file)
 
@@ -129,18 +123,19 @@ def call_api(endpoint_url: str, params: dict, authorization_token: str, logger: 
         logger.log(f"An error occurred while making the API request: {str(e)}")
         return None
     
-def add_asset_to_csv (assets_in_csv_file, asset, writer, logger):
+def add_asset_to_csv (assets_in_csv_file, asset, writer, logger, asset_relationship):
     
     # # Check if asset is already in CSV file
     if asset['assetId'] not in assets_in_csv_file:
           
-    # If no, add it
+        # If no, add it
         writer.writerow([asset['assetId'], asset['assetType'], asset['assetAddress']['addressLine1'], asset['assetAddress']['postCode']])
         assets_in_csv_file.append(asset['assetId'])
 
     # If yes, do nothing
     else: 
-        logger.log(f"PropRef {asset['assetId']} is already in the CSV, skipping asset.")
+        return
+        # logger.log(f"PropRef {asset['assetId']} of {asset_relationship} is already in the CSV, skipping asset.")
 
 def main():
     table = get_dynamodb_table(Config.TABLE_NAME, Config.STAGE)
@@ -148,8 +143,12 @@ def main():
     asset_csv_data = csv_to_dict_list(_file_path)
     load_dotenv()
     logger = Config.LOGGER
+    output_csv_file_file_path = 'aws/src/database/data/output/output-test.csv'
 
-    assets_not_found, assets_in_csv_file = generate_lbh_owned_assets_csv(table, asset_csv_data, logger)
+    # Create/reference CSV file
+    with open(output_csv_file_file_path, 'w', newline='') as csvfile:
+        writer = csv.writer(csvfile)
+        assets_not_found, assets_in_csv_file = generate_lbh_owned_assets_csv(table, asset_csv_data, writer, logger)
 
     if len(assets_not_found) > 0:
             logger.log("The following assets could not be found in the database", assets_not_found)
