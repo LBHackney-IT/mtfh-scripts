@@ -1,3 +1,4 @@
+import subprocess
 import boto3
 import botocore.exceptions
 from boto3 import Session
@@ -37,7 +38,9 @@ def get_session_for_stage(stage: Stage | str) -> Session:
             # Thrown when using SSO and credentials have expired
             input(f"\nInvalid or expired credentials for profile {stage_profile}.\n"
                   f"aws sso login --profile {stage_profile}; || - Run to refresh.\n"
-                  f"Hit enter to try again")
+                  f"If you have a {stage_profile} AWS SSO profile, hit enter to run this command and log in:")
+            subprocess.Popen(["aws", "sso", "login", "--profile", stage_profile]).wait()
+            input("\nHit enter to try running the script again again")
         except botocore.exceptions.NoRegionError:
             # Thrown when there is no region configured for the profile
             input(f"\nNo region configured for profile {stage_profile}.\n"

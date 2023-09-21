@@ -16,10 +16,7 @@ PROFILE = housing-${ENVIRONMENT}
 # -- Parameter Store paths --
 ifeq (${ENVIRONMENT}, development)
 	INSTANCE_ID_PATH := " /housing-finance/${ENVIRONMENT}/instance-id"
-else ifeq (${ENVIRONMENT}, staging)
- 	# There is currently no /housing-finance/staging/instance-id parameter
-	INSTANCE_ID_PATH := " /platform-apis-jump-box-instance-name"
-else ifeq (${ENVIRONMENT}, production)
+else
 	INSTANCE_ID_PATH := " /platform-apis-jump-box-instance-name"
 endif
 DB_ENDPOINT_PATH := " /housing-finance/${ENVIRONMENT}/db-host"
