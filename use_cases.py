@@ -7,7 +7,7 @@
 #     main as get_housing_officers_and_area_managers_main
 # from aws.src.database.multi_table.amend_tenure import main as amend_tenure_main
 # from aws.src.database.multi_table.find_persons_for_properties import main as find_persons_for_properties_main
-from aws.src.database.dynamodb.scripts.contact_details_table.scan_and_patch_new_phone_numbers import main as scan_and_patch_new_phone_numbers_main
+# from aws.src.database.dynamodb.scripts.contact_details_table.scan_and_patch_new_phone_numbers import main as scan_and_patch_new_phone_numbers_main
 #from aws.src.database.dynamodb.scripts.asset_table.patch_asset_with_additional_boiler_house_id import main as update_boilerhouse
 # from gcp.src.service_account.main import main as service_account_main
 
