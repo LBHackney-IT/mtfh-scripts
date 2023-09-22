@@ -13,7 +13,7 @@ import time
 #
 # IMPORTANT:
 #
-# This script uses the scan() operation in DyanmoDB which is cery expensive
+# This script uses the scan() operation in DyanmoDB which is very expensive
 # if used repeatedly. DO NOT invoke these methods in a loop. Rather, supply
 # a list of affected records and run the script once
 #
