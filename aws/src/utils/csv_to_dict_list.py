@@ -34,3 +34,11 @@ def dict_list_to_csv_rows(dict_list: list[dict], header_row: list[str]) -> list[
             csv_row.append(dict_item[header])
         csv_rows.append(csv_row)
     return csv_rows
+
+def csv_to_array(file_path: str) -> list[str]:
+    with open(file_path, 'r') as csv_file:
+        csv_reader = csv.reader(csv_file)
+        data_array = []
+        for row in csv_reader:
+            data_array.append(row[0])
+        return data_array
