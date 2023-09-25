@@ -20,3 +20,5 @@ venv
 *.json
 
 config.py
+
+stored_procedures
