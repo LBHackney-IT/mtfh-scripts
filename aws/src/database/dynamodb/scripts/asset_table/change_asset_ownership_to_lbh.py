@@ -25,7 +25,7 @@ def change_asset_ownership_to_lbh(asset_table: Table, assets_from_csv: list[dict
     progress_bar = ProgressBar(len(assets_from_csv))
 
     # The array below will be used to display a list of assets that could not be found
-    no_asset_found = []
+    assets_not_found = []
     assets_changed = []
 
     for i, csv_asset_item in enumerate(assets_from_csv):        
@@ -41,7 +41,7 @@ def change_asset_ownership_to_lbh(asset_table: Table, assets_from_csv: list[dict
         if (len(db_data_retrieve) > 0):
             asset_record = db_data_retrieve[0]
 
-            # Scenario 1: Property assetManagement is NOT present (meaning property isCouncilProperty is also NOT present)
+            # Property assetManagement is NOT present (meaning property isCouncilProperty is also NOT present)
             if ("assetManagement" not in asset_record or asset_record['assetManagement'] is None):
 
                 # Add new assetManagement property to asset, and within assetManagement, set isCouncilProperty to True 
@@ -49,10 +49,9 @@ def change_asset_ownership_to_lbh(asset_table: Table, assets_from_csv: list[dict
                 change_asset_ownership(asset_table, asset_record, assets_changed, logger)
 
             else:
-                # Scenario 2: Property assetManagement is present and property isCouncilProperty is NOT present
+                # Property assetManagement is present and property isCouncilProperty is NOT present
                 if ('isCouncilProperty' not in asset_record['assetManagement']):
-
-                    # We create isCouncilProperty within assetManagement
+                    # We create isCouncilProperty within assetManagement (without affecting other properties within assetManagement)
                     asset_record["assetManagement"]["isCouncilProperty"] = True
                     change_asset_ownership(asset_table, asset_record, assets_changed, logger)
 
@@ -69,15 +68,11 @@ def change_asset_ownership_to_lbh(asset_table: Table, assets_from_csv: list[dict
                         change_asset_ownership(asset_table, asset_record, assets_changed, logger)
 
         else:
-            no_asset_found.append(asset_prop_ref)
+            assets_not_found.append(asset_prop_ref)
             logger.log(f'Could not find asset with prop ref {asset_prop_ref}')
-    
-    # Display assets that could not be found
-    if (len(no_asset_found) > 0):
-        logger.log("Script completed. The following assets could not be found in the database:")
-        logger.log(no_asset_found)
 
-    return assets_changed
+    logger.log("Script execution complete")
+    return assets_changed, assets_not_found
 
 
 def change_asset_ownership(asset_table, asset_record, assets_changed, logger):
@@ -92,12 +87,16 @@ def main():
 
     logger = Config.LOGGER
 
-    # Note: Batch write to update the asset data in dynamodb
-    assets_changed = change_asset_ownership_to_lbh(table, asset_csv_data, logger)
+    assets_changed, assets_not_found = change_asset_ownership_to_lbh(table, asset_csv_data, logger)
 
+    # Display final output
     if (len(assets_changed) > 0):
-        logger.log(f"Script execution complete. A total of {len(assets_changed)} assets have been changed, and are now recorded as LBH properties in the database.")
+        logger.log(f"A total of {len(assets_changed)} assets have been changed, and are now recorded as LBH properties in the database.")
         logger.log("Assets changed:")
         logger.log(assets_changed)
     else:
-        logger.log(f"Script execution complete. No assets were changed.")
+        logger.log(f"No assets were changed.")
+        
+    if (len(assets_not_found) > 0):
+        logger.log("The following assets could not be found in the database:")
+        logger.log(assets_not_found)
