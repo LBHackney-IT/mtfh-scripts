@@ -14,7 +14,7 @@ class Config:
     TABLE_NAME = "Assets"
     LOGGER = Logger()
     STAGE = Stage.HOUSING_DEVELOPMENT
-    FILE_PATH = "aws/src/database/data/input/LBH-Owned-Assets-TEST.csv"
+    FILE_PATH = "aws/src/database/data/input/LBH-Owned-Assets.csv"
     HEADING_FILTERS = {
         "id": lambda x: bool(x),
     }
@@ -27,6 +27,7 @@ def change_asset_ownership_to_lbh(asset_table: Table, assets_from_csv: list[dict
     # The array below will be used to display a list of assets that could not be found
     no_asset_found = []
     assets_changed = []
+    no_ownership = []
 
     for i, csv_asset_item in enumerate(assets_from_csv):        
         if i % 100 == 0:
@@ -41,19 +42,28 @@ def change_asset_ownership_to_lbh(asset_table: Table, assets_from_csv: list[dict
         if (len(db_data_retrieve) > 0):
             asset_record = db_data_retrieve[0]
 
-            # Check if isCouncilProperty is false
-            if (asset_record["assetManagement"]["isCouncilProperty"] == False):
-                # if yes, change it to true
-                asset_record["assetManagement"]["isCouncilProperty"] = True
-                assets_changed.append(asset_prop_ref)
-                
-                # save changed record to database
-                asset_table.put_item(Item=asset_record)
-                logger.log(f"Ownership of asset with prop ref {asset_prop_ref} has been changed to LBH.")
-                
-                # otherwise move onto next item in CSV file
-            else: 
-                continue
+            # Check if asset has assetManagement property
+            if ("assetManagement" not in asset_record):
+                # if not, create it and assign ownership to LBH
+                asset_record['assetManagement'] = {"isCouncilProperty" : True}
+
+            # Otherwise
+            else:
+                # check if isCouncilProperty is false
+                if (asset_record["assetManagement"]["isCouncilProperty"] == False):
+                    # if yes, change it to true
+                    asset_record["assetManagement"]["isCouncilProperty"] = True
+                    
+                    
+                    assets_changed.append(asset_prop_ref)
+                    
+                    # save changed record to database
+                    asset_table.put_item(Item=asset_record)
+                    logger.log(f"Ownership of asset with prop ref {asset_prop_ref} has been changed to LBH.")
+                    
+                    # otherwise move onto next item in CSV file
+                else: 
+                    continue
 
 
         else:
