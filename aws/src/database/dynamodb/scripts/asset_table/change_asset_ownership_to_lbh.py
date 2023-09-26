@@ -14,7 +14,7 @@ class Config:
     TABLE_NAME = "Assets"
     LOGGER = Logger()
     STAGE = Stage.HOUSING_DEVELOPMENT
-    FILE_PATH = "aws/src/database/data/input/LBH-Owned-Assets.csv"
+    FILE_PATH = "aws/src/database/data/input/LBH-Owned-Assets-TEST.csv"
     HEADING_FILTERS = {
         "id": lambda x: bool(x),
     }
@@ -27,7 +27,6 @@ def change_asset_ownership_to_lbh(asset_table: Table, assets_from_csv: list[dict
     # The array below will be used to display a list of assets that could not be found
     no_asset_found = []
     assets_changed = []
-    no_ownership = []
 
     for i, csv_asset_item in enumerate(assets_from_csv):        
         if i % 100 == 0:
@@ -41,30 +40,24 @@ def change_asset_ownership_to_lbh(asset_table: Table, assets_from_csv: list[dict
 
         if (len(db_data_retrieve) > 0):
             asset_record = db_data_retrieve[0]
+            print(asset_record)
 
-            # Check if asset has assetManagement property
-            if ("assetManagement" not in asset_record):
-                # if not, create it and assign ownership to LBH
+            # Scenario 1: Property assetManagement is present -  Property isCouncilProperty is present and set to True
+            if ("assetManagement" in asset_record and asset_record["assetManagement"]["isCouncilProperty"] == True):
+                # Nothing to do. Move onto next item in CSV file.
+                continue
+
+            # Scenario 2: Property assetManagement is present - Property isCouncilProperty is present and set to False, or it is not present
+            elif ("assetManagement" in asset_record and asset_record["assetManagement"]["isCouncilProperty"] == False or 'isCouncilProperty' not in asset_record['assetManagement']): 
+                # Create new/change property isCouncilProperty to True (without affecting other properties within assetManagement)
+                asset_record["assetManagement"]["isCouncilProperty"] = True
+                change_asset_ownership(asset_table, asset_record, assets_changed, logger)
+
+            # Scenario 3: Property assetManagement is NOT present (meaning property isCouncilProperty is also NOT present)
+            elif ("assetManagement" not in asset_record):
+                # Add new assetManagement property to asset, and within assetManagement, set isCouncilProperty to True 
                 asset_record['assetManagement'] = {"isCouncilProperty" : True}
-
-            # Otherwise
-            else:
-                # check if isCouncilProperty is false
-                if (asset_record["assetManagement"]["isCouncilProperty"] == False):
-                    # if yes, change it to true
-                    asset_record["assetManagement"]["isCouncilProperty"] = True
-                    
-                    
-                    assets_changed.append(asset_prop_ref)
-                    
-                    # save changed record to database
-                    asset_table.put_item(Item=asset_record)
-                    logger.log(f"Ownership of asset with prop ref {asset_prop_ref} has been changed to LBH.")
-                    
-                    # otherwise move onto next item in CSV file
-                else: 
-                    continue
-
+                change_asset_ownership(asset_table, asset_record, assets_changed, logger)
 
         else:
             no_asset_found.append(asset_prop_ref)
@@ -77,6 +70,11 @@ def change_asset_ownership_to_lbh(asset_table: Table, assets_from_csv: list[dict
 
     return assets_changed
 
+
+def change_asset_ownership(asset_table, asset_record, assets_changed, logger):
+    assets_changed.append(asset_record["assetId"])           
+    asset_table.put_item(Item=asset_record)
+    logger.log(f"Ownership of asset with prop ref {asset_record['assetId']} has been changed to LBH.")
 
 def main():
     table = get_dynamodb_table(Config.TABLE_NAME, Config.STAGE)
