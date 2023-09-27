@@ -5,7 +5,8 @@ Note: Ensure to install unixodbc to be able to use pyodbc
 import pyodbc
 from sqlalchemy import create_engine
 
-from aws.src.database.rds.housing_finance.entities.GoogleFileSetting import Base as HousingFinanceBase
+from aws.src.database.rds.housing_finance.entities.GoogleFileSetting import Base as HousingFinanceBase, \
+    GoogleFileSetting
 from mypy_boto3_ssm import SSMClient
 from sqlalchemy.orm import sessionmaker, Session as SA_Session
 
@@ -48,3 +49,7 @@ if __name__ == "__main__":
     """
     Example usage
     """
+    HfsSession = session_for_hfs(Stage.HOUSING_STAGING)
+    with HfsSession.begin() as session:
+        res = session.query(GoogleFileSetting).where(GoogleFileSetting.Label == "ChargesOLD").all()
+        print(res[0].GoogleIdentifier)
