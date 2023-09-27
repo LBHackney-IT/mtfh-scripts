@@ -68,8 +68,12 @@ def check_if_propref_gets_adjusted(session: Session, prop_ref: str, should_adjus
         f"FAIL Charge amount is not as expected: {result} != {expected_amount}"
 
 
-if __name__ == '__main__':
+def main_tests():
     HfsSession = session_for_hfs(Stage.HOUSING_DEVELOPMENT)
     with HfsSession.begin() as sess:
         check_if_propref_gets_adjusted(sess, ADJUSTABLE_PROPREF, should_adjust=True)
         check_if_propref_gets_adjusted(sess, EXCLUDED_PROPREF, should_adjust=False)
+
+
+if __name__ == '__main__':
+    main_tests()
