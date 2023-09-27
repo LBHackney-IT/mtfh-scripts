@@ -8,8 +8,8 @@ from sqlalchemy.orm import Session
 from aws.src.database.rds.housing_finance.session_for_hfs import session_for_hfs
 from enums.enums import Stage
 
-ADJUSTED_PROPREF = input()
-EXCLUDED_PROPREF = input()
+ADJUSTABLE_PROPREF = input("Enter adjustable propref: ")
+EXCLUDED_PROPREF = input("Enter excluded propref: ")
 CUTOFF_DATE = datetime(2023, 6, 2)
 
 TEST_CHARGE_AMOUNT = Decimal(100.00)
@@ -48,41 +48,28 @@ def get_result(session: Session, prop_ref: str, charge_date: datetime) -> Decima
     return result
 
 
-def does_not_modify_charges_before_cutoff_date(session: Session, prop_ref: str):
+def check_if_propref_gets_adjusted(session: Session, prop_ref: str, should_adjust: bool):
+    # Does not modify charges before cutoff date
     past_charge_date = CUTOFF_DATE - timedelta(days=1)
     result = get_result(session, prop_ref, past_charge_date)
     expected_amount = TEST_CHARGE_AMOUNT
-
-    print("\nDoes not modify charges before cutoff date")
     assert result == expected_amount, \
-        f"FAIL Charge amount is not as expected: {result} != {expected_amount}"
-    print(f"PASS {result} -> {expected_amount}")
+        f"FAIL Modified charge before cutoff date {CUTOFF_DATE}: {result} != {expected_amount}"
 
-
-def adjusts_charges_after_cutoff_date(session: Session, prop_ref: str):
-    # Call user defined function with test data
+    # Adjusts charges after cutoff date (if expected)
+    if should_adjust:
+        expected_amount = round(TEST_CHARGE_AMOUNT * Decimal(0.94), 2)
+    else:
+        expected_amount = TEST_CHARGE_AMOUNT
     future_charge_date = CUTOFF_DATE + timedelta(days=1)
     result = get_result(session, prop_ref, future_charge_date)
-    result = round(result, 2)
-    expected_amount = round(TEST_CHARGE_AMOUNT * Decimal(0.94), 2)
-    print("\nAdjusts charges after cutoff date")
+
     assert result == expected_amount, \
         f"FAIL Charge amount is not as expected: {result} != {expected_amount}"
-    print(f"PASS {result} -> {expected_amount}")
-
-
-def does_not_modify_excluded_propref(session: Session, prop_ref: str):
-    result = get_result(session, prop_ref, CUTOFF_DATE + timedelta(days=1))
-    expected_amount = TEST_CHARGE_AMOUNT
-    print("\nDoes not modify excluded propref")
-    assert result == expected_amount, \
-        f"FAIL Charge amount is not as expected: {result} != {expected_amount}"
-    print(f"PASS {result} -> {expected_amount}")
 
 
 if __name__ == '__main__':
     HfsSession = session_for_hfs(Stage.HOUSING_DEVELOPMENT)
     with HfsSession.begin() as sess:
-        does_not_modify_charges_before_cutoff_date(sess, ADJUSTED_PROPREF)
-        adjusts_charges_after_cutoff_date(sess, ADJUSTED_PROPREF)
-        does_not_modify_excluded_propref(sess, EXCLUDED_PROPREF)
+        check_if_propref_gets_adjusted(sess, ADJUSTABLE_PROPREF, should_adjust=True)
+        check_if_propref_gets_adjusted(sess, EXCLUDED_PROPREF, should_adjust=False)

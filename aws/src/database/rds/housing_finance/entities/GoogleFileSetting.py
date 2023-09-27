@@ -1,11 +1,8 @@
 from dataclasses import dataclass, asdict
 
 from sqlalchemy import String, INT, DateTime
-from sqlalchemy.orm import DeclarativeBase, MappedAsDataclass, Mapped, mapped_column
-
-
-class Base(MappedAsDataclass, DeclarativeBase):
-    pass
+from sqlalchemy.orm import Mapped, mapped_column
+from aws.src.database.rds.housing_finance.entities.Base import Base
 
 
 @dataclass

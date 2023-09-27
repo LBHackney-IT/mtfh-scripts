@@ -3,15 +3,13 @@ from datetime import datetime
 from _decimal import Decimal
 
 from aws.src.database.rds.housing_finance.entities.Charge import Charge
-from aws.src.database.rds.housing_finance.entities.ChargesHistoryAdjustmentsExclusion import \
-    ChargesHistoryAdjustmentsExclusion
 from aws.src.database.rds.housing_finance.entities.ChargesHistoryEntity import ChargesHistoryEntity
 from aws.src.database.rds.housing_finance.entities.SSMiniTransaction import SSMiniTransaction
 from aws.src.database.rds.housing_finance.session_for_hfs import session_for_hfs
 from enums.enums import Stage
 
-ADJUSTED_PROPREF = input()
-EXCLUDED_PROPREF = input()
+ADJUSTABLE_PROPREF = input("Enter adjustable propref: ")
+EXCLUDED_PROPREF = input("Enter excluded propref: ")
 
 FIN_YEAR_START = datetime(2023, 4, 1)
 EFFECTIVE_DATE = datetime(2023, 6, 2)
