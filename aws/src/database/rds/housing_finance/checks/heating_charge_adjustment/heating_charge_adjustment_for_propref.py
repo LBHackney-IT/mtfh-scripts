@@ -11,6 +11,7 @@ from enums.enums import Stage
 ADJUSTABLE_PROPREF = input("Enter adjustable propref: ")
 EXCLUDED_PROPREF = input("Enter excluded propref: ")
 
+STAGE = Stage.HOUSING_DEVELOPMENT
 FIN_YEAR_START = datetime(2023, 4, 1)
 EFFECTIVE_DATE = datetime(2023, 6, 2)
 HEATING_TRANS_TYPE = 'DHE'
@@ -19,14 +20,14 @@ ADJUSTMENT_FACTOR = Decimal(0.94)
 
 def heating_charge_adjustment_test(
         prop_ref: str, fin_year_start: datetime, effective_date: datetime, adjustment_factor: Decimal):
-    HfsSession = session_for_hfs(Stage.HOUSING_DEVELOPMENT)
+    HfsSession = session_for_hfs(STAGE)
     with HfsSession.begin() as session:
         # == Charges ==
         charges = session.query(Charge) \
             .where(
             (Charge.PropertyRef == prop_ref) &
             (Charge.ChargeType == HEATING_TRANS_TYPE) &
-            (Charge.Active == True)
+            (Charge.Active.is_(True))
         ).all()
         print("\n\n=== Charges ===")
         for charge in charges:
@@ -40,8 +41,7 @@ def heating_charge_adjustment_test(
             (ChargesHistoryEntity.PropertyRef == prop_ref) &
             (ChargesHistoryEntity.ChargeType == HEATING_TRANS_TYPE) &
             (ChargesHistoryEntity.Date >= fin_year_start)
-        ).order_by(ChargesHistoryEntity.Date.desc()) \
-            .all()
+        ).order_by(ChargesHistoryEntity.Date.desc()).all()
 
         print("\n\n=== ChargesHistory ===")
         for charge in charges_history:

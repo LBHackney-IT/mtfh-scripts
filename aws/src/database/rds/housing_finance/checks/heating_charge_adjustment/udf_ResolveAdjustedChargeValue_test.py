@@ -8,6 +8,8 @@ from sqlalchemy.orm import Session
 from aws.src.database.rds.housing_finance.session_for_hfs import session_for_hfs
 from enums.enums import Stage
 
+STAGE = Stage.HOUSING_DEVELOPMENT
+
 ADJUSTABLE_PROPREF = input("Enter adjustable propref: ")
 EXCLUDED_PROPREF = input("Enter excluded propref: ")
 CUTOFF_DATE = datetime(2023, 6, 2)
@@ -69,7 +71,7 @@ def check_if_propref_gets_adjusted(session: Session, prop_ref: str, should_adjus
 
 
 def main_tests():
-    HfsSession = session_for_hfs(Stage.HOUSING_DEVELOPMENT)
+    HfsSession = session_for_hfs(STAGE)
     with HfsSession.begin() as sess:
         check_if_propref_gets_adjusted(sess, ADJUSTABLE_PROPREF, should_adjust=True)
         check_if_propref_gets_adjusted(sess, EXCLUDED_PROPREF, should_adjust=False)
