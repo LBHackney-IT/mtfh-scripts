@@ -27,4 +27,4 @@ class SSMiniTransaction(Base):
     to_dict = asdict
 
     def __repr__(self) -> str:
-        return f"ChargesHistoryEntity(origin={self.origin}, trans_type={self.trans_type}, real_value={self.real_value!r}, post_date={self.post_date})"
+        return f"SSMiniTransaction(origin={self.origin}, trans_type={self.trans_type}, real_value={self.real_value!r}, post_date={self.post_date})"

@@ -17,7 +17,7 @@ HEATING_TRANS_TYPE = 'DHE'
 ADJUSTMENT_FACTOR = Decimal(0.94)
 
 TEST_CHARGE_AMOUNT = Decimal(100.00)
-CUTOFF_DATE = datetime(2023, 6, 2)
+ADJUSTMENT_EFFECTIVE_DATE = datetime(2023, 6, 2)
 
 
 def main():
@@ -27,7 +27,7 @@ def main():
         heating_charge_adjustment_tests(
             session, ADJUSTABLE_PROPREF, EXCLUDED_PROPREF, FIN_YEAR_START, EFFECTIVE_DATE, ADJUSTMENT_FACTOR
         )
-        udf_tests(session, ADJUSTABLE_PROPREF, EXCLUDED_PROPREF, TEST_CHARGE_AMOUNT, CUTOFF_DATE)
+        udf_tests(session, ADJUSTABLE_PROPREF, EXCLUDED_PROPREF, TEST_CHARGE_AMOUNT, ADJUSTMENT_EFFECTIVE_DATE)
         print("--------\nAll tests PASSED\n--------")
 
 

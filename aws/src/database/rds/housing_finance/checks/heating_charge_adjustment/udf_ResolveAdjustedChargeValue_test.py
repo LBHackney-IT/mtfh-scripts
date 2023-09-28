@@ -42,20 +42,20 @@ def get_result(session: Session, prop_ref: str, charge_date: datetime, test_char
 
 def check_if_propref_gets_adjusted(
         session: Session, prop_ref: str, should_adjust: bool,
-        test_charge_amount: Decimal, cutoff_date: datetime):
+        test_charge_amount: Decimal, adjustment_effective_date: datetime):
     # Does not modify charges before cutoff date
-    past_charge_date = cutoff_date - timedelta(days=1)
+    past_charge_date = adjustment_effective_date - timedelta(days=1)
     result = get_result(session, prop_ref, past_charge_date, test_charge_amount)
     expected_amount = test_charge_amount
     assert result == expected_amount, \
-        f"FAIL Modified charge before cutoff date {cutoff_date}: {result} != {expected_amount}"
+        f"FAIL Modified charge before cutoff date {adjustment_effective_date}: {result} != {expected_amount}"
 
     # Adjusts charges after cutoff date (if expected)
     if should_adjust:
         expected_amount = round(test_charge_amount * Decimal(0.94), 2)
     else:
         expected_amount = test_charge_amount
-    future_charge_date = cutoff_date + timedelta(days=1)
+    future_charge_date = adjustment_effective_date + timedelta(days=1)
     result = get_result(session, prop_ref, future_charge_date, test_charge_amount)
 
     assert result == expected_amount, \
@@ -64,8 +64,8 @@ def check_if_propref_gets_adjusted(
 
 def main_tests(
         sess: Session, adjustable_propref: str, excluded_propref: str,
-        test_charge_amount: Decimal, cutoff_date: datetime):
+        test_charge_amount: Decimal, adjustment_effective_date: datetime):
     print("Running udf_ResolveAdjustedChargeValue tests...")
-    check_if_propref_gets_adjusted(sess, adjustable_propref, True, test_charge_amount, cutoff_date)
-    check_if_propref_gets_adjusted(sess, excluded_propref, False, test_charge_amount, cutoff_date)
+    check_if_propref_gets_adjusted(sess, adjustable_propref, True, test_charge_amount, adjustment_effective_date)
+    check_if_propref_gets_adjusted(sess, excluded_propref, False, test_charge_amount, adjustment_effective_date)
     print("--------\nudf_ResolveAdjustedChargeValue tests PASSED\n--------")
