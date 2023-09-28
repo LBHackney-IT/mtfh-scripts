@@ -27,7 +27,7 @@ def heating_charge_adjustment_test(
             .where(
             (Charge.PropertyRef == prop_ref) &
             (Charge.ChargeType == HEATING_TRANS_TYPE) &
-            (Charge.Active.is_(True))
+            (Charge.Active == True)
         ).all()
         print("\n\n=== Charges ===")
         for charge in charges:
@@ -82,5 +82,13 @@ def heating_charge_adjustment_test(
     print("--------\nTests PASSED\n--------")
 
 
+def main_tests():
+    # Should adjust for included propref
+    heating_charge_adjustment_test(ADJUSTABLE_PROPREF, FIN_YEAR_START, EFFECTIVE_DATE, ADJUSTMENT_FACTOR)
+
+    # Should not adjust for excluded propref
+    heating_charge_adjustment_test(EXCLUDED_PROPREF, FIN_YEAR_START, EFFECTIVE_DATE, Decimal(1.0))
+
+
 if __name__ == "__main__":
-    heating_charge_adjustment_test(EXCLUDED_PROPREF, FIN_YEAR_START, EFFECTIVE_DATE, ADJUSTMENT_FACTOR)
+    main_tests()
