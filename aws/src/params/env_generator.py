@@ -15,10 +15,12 @@ from aws.src.authentication.generate_aws_resource import generate_aws_service
 from enums.enums import Stage
 import re
 
-ssm_client: SSMClient = generate_aws_service("ssm", Stage.HOUSING_STAGING, "client")
+STAGE = Stage.HOUSING_DEVELOPMENT
 
-PROFILE = "housing-staging"
-STAGE = PROFILE.replace("housing-", "")
+ssm_client: SSMClient = generate_aws_service("ssm", STAGE, "client")
+
+PROFILE = STAGE.value
+STAGE_URL = PROFILE.replace("housing-", "")
 
 
 class SectionType(Enum):
@@ -49,7 +51,7 @@ def handle_param_section(param_section: str, param_section_type: SectionType) ->
     elif param_section_type == SectionType.SERVERLESS:
         stage_placeholder = "${self:provider.stage}"
         key_regex = r'([A-z_0-9]+): \$'
-        path_regex = r'ssm:([A-z|/]+)'
+        path_regex = r'ssm:([A-z|/|-]+)'
     elif param_section_type == SectionType.TERRAFORM:
         stage_placeholder = "${var.environment_name}"
         key_regex = r'data "aws_ssm_parameter" "([^"]+)" {[^}]+}'
@@ -58,11 +60,11 @@ def handle_param_section(param_section: str, param_section_type: SectionType) ->
         raise Exception(f"Unknown param section type: {param_section_type}")
 
     out_lines = []
-    param_section = param_section.replace(stage_placeholder, STAGE)
+    param_section = param_section.replace(stage_placeholder, STAGE_URL)
 
     keys = re.findall(key_regex, param_section)
     paths = re.findall(path_regex, param_section)
-    if not keys or not paths or len(keys) != len(paths):
+    if not keys or not paths:
         raise Exception(f"Error parsing param section: {param_section}")
     keys = [key.strip().upper() for key in keys]
 
@@ -78,7 +80,9 @@ def handle_param_section(param_section: str, param_section_type: SectionType) ->
 
 
 def main():
-    param_text = input("Paste the param section from CircleCI / Serverless / Terraform: ")
+    # param_text = input("Paste the param section from CircleCI / Serverless / Terraform: ")
+    with open("input.txt", "r") as f:
+        param_text = f.read()
     print("\n\nGenerating environment variables...")
     env_generator(param_text)
 
