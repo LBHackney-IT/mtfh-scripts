@@ -210,7 +210,7 @@ class Asset:
     patches: list[Patch]
     rootAsset: str | None
     tenure: AssetTenure | None
-    versionNumber: Decimal | None
+    versionNumber: int | None
     rentGroup: str | None
     parentAssetIds: list[str] | None
 
@@ -219,6 +219,7 @@ class Asset:
             self.patches = []
 
         self.tenure = AssetTenure.from_data(self.tenure)
+        self.assetAddress = AssetAddress.from_data(self.assetAddress)
         if not all(isinstance(patch, Patch) for patch in self.patches):
             self.patches = [Patch.from_data(patch) for patch in self.patches]
 
