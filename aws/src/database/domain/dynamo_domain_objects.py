@@ -210,6 +210,21 @@ class AssetAddress:
 
 
 @dataclass
+class AssetAddress:
+    addressLine1: str | None
+    addressLine2: str | None
+    addressLine3: str | None
+    addressLine4: str | None
+    postCode: str | None
+    postPreamble: str | None
+    uprn: str | None
+
+    @classmethod
+    def from_data(cls, data: Any):
+        return _dataclass_from_data(cls, data)
+
+
+@dataclass
 class Asset:
     id: str
     areaId: str | None
@@ -224,6 +239,7 @@ class Asset:
     rootAsset: str | None
     tenure: AssetTenure | None
     parentAssetIds: str | None
+    rentGroup: str | None
     versionNumber: int | None
 
     def __post_init__(self):
