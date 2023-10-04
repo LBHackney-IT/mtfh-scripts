@@ -183,9 +183,24 @@ class AssetTenure:
 
 
 @dataclass
+class AssetAddress:
+    addressLine1: str | None
+    addressLine2: str | None
+    addressLine3: str | None
+    addressLine4: str | None
+    postCode: str | None
+    postPreamble: str | None
+    uprn: str | None
+
+    @classmethod
+    def from_data(cls, data: Any):
+        return _dataclass_from_data(cls, data)
+
+
+@dataclass
 class Asset:
     id: str
-    assetAddress: dict | None
+    assetAddress: AssetAddress | None
     assetCharacteristics: dict | None
     assetId: str | None
     assetLocation: dict | None
@@ -196,6 +211,8 @@ class Asset:
     rootAsset: str | None
     tenure: AssetTenure | None
     versionNumber: Decimal | None
+    rentGroup: str | None
+    parentAssetIds: list[str] | None
 
     def __post_init__(self):
         if self.patches is None:
