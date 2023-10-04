@@ -168,8 +168,6 @@ def main():
     asset_table = get_dynamodb_table("Assets", STAGE)
     asset = get_asset(asset_table, asset_id)
 
-    asset.assetAddress.addressLine1 = '7 PITCAIRN HOUSE'
-
     update_address_asset_api(ASSET_API_URL, asset.id, asset.versionNumber, asset.assetAddress)
 
     #TODO (proposed steps):
