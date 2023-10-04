@@ -10,9 +10,14 @@ from aws.src.authentication.generate_aws_resource import generate_aws_service
 from aws.src.database.domain.dynamo_domain_objects import Asset, AssetAddress
 from aws.src.database.dynamodb.utils.get_by_secondary_index import get_by_secondary_index
 from aws.src.database.dynamodb.utils.get_dynamodb_table import get_dynamodb_table
+from aws.src.utils.csv_to_dict_list import csv_to_dict_list
 from enums.enums import Stage
 
 STAGE = Stage.HOUSING_STAGING
+
+INPUT_FILE = "input/input.csv"
+FAILED_PRNS_FILE = "output/failed_prns.csv"
+SUCCESSFUL_PRNS_FILE = "output/successful_prns.csv"
 
 _ssm = generate_aws_service('ssm', STAGE, "client")
 _address_api_url_path = f"/housing-tl/{STAGE.to_env_name()}/address-api-url"
@@ -32,7 +37,7 @@ def add_successful_uprn(uprn: int | str, outfile="successful_uprns.csv"):
 
 
 @dataclass
-class Address:
+class AddressAPIRes:
     line1: str
     line2: str
     line3: str
@@ -51,7 +56,7 @@ def get_asset(asset_table: Table, prop_ref: str) -> Asset | None:
     return asset
 
 
-def llpg_address_for_uprn(address_api_url: str, uprn: int | str) -> Address | None:
+def llpg_address_for_uprn(address_api_url: str, uprn: int | str) -> AddressAPIRes | None:
     """
     Get an address from the LLP Gazetteer via the Address API for a given UPRN
     Requires a "hackneyToken" environment variable to be set to authenticate with the API
@@ -89,7 +94,7 @@ def llpg_address_for_uprn(address_api_url: str, uprn: int | str) -> Address | No
     try:
         address_json = addresses_list[0]
         assert int(address_json["UPRN"]) == int(uprn)
-        address = from_dict(data_class=Address, data=address_json)
+        address = from_dict(data_class=AddressAPIRes, data=address_json)
         return address
     except (IndexError, KeyError, AssertionError):
         print(f"WARNING: Could not get address for UPRN {uprn}, got: {addresses_list}")
@@ -157,10 +162,21 @@ def update_address_asset_api(asset_api_url: str, asset_pk: str, version_number: 
         return None
 
 
+def load_csv_to_address_list(filename: str) -> list[AssetAddress]:
+    addresses_raw = csv_to_dict_list(filename)
+    addresses: list[AssetAddress] = []
+    for address_raw in addresses_raw:
+        addresses.append(AssetAddress.from_data(address_raw))
+
+    return addresses
+
 def main():
-    # for filename in ["failed_uprns.csv", "successful_uprns.csv"]:
-    #     with open(filename, "w") as outfile:
-    #         outfile.write("")
+    for filename in [FAILED_PRNS_FILE, SUCCESSFUL_PRNS_FILE]:
+        with open(filename, "w") as outfile:
+            outfile.write("")
+
+    addresses_to_load = load_csv_to_address_list(INPUT_FILE)
+
 
     # uprn_var = os.environ.get("test_uprn")
     asset_id = os.environ.get("test_asset_id")
