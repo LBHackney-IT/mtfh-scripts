@@ -2,7 +2,7 @@
 Note: Ensure to install unixodbc to be able to use pyodbc
 """
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker, Session as SA_Session
 from psycopg2 import connect as psycopg2_connect
 
@@ -42,7 +42,13 @@ if __name__ == "__main__":
     """
     Example usage
     """
+    with open("UPRNs.txt", "r") as f:
+        uprns = f.readlines()
+        uprns = [uprn.strip() for uprn in uprns]
+        uprns = [uprn for uprn in uprns if len(uprn) > 3]
     AddressSession = session_for_addresses(Stage.BASE_STAGING)
     with AddressSession.begin() as session:
-        res = session.query(HackneyAddress).where(HackneyAddress.uprn == "100021021442").all()
-        print(res[0])
+        uprn_entries = ", ".join([f"({uprn})" for uprn in uprns])
+        insert = text(f"INSERT INTO dbo._tmp_export_hackney_address (uprn) VALUES"
+                      f"{uprn_entries}")
+        session.execute(insert)
