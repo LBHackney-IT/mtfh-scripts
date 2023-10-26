@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+import sys
 
 from mypy_boto3_dynamodb.service_resource import Table
 
@@ -9,6 +10,7 @@ from aws.src.utils.logger import Logger
 from aws.src.utils.progress_bar import ProgressBar
 from enums.enums import Stage
 from decimal import Decimal
+import requests
 
 
 @dataclass
@@ -16,10 +18,12 @@ class Config:
     TABLE_NAME = "Assets"
     LOGGER = Logger()
     STAGE = Stage.HOUSING_DEVELOPMENT
-    FILE_PATH = "aws\src\database\data\input\\new_address_data.csv"
+    FILE_PATH = "aws\src\database\input\\RELOAD.csv"
     HEADING_FILTERS = {
         "id": lambda x: bool(x),
     }
+    ASSET_API_URL = "<REDACTED>"
+    ASSET_API_KEY = "<REDACTED>"
 
 def update_assets_with_additional_data(asset_table: Table, assets_from_csv: list[dict]) -> int:
     update_count = 0
@@ -28,15 +32,21 @@ def update_assets_with_additional_data(asset_table: Table, assets_from_csv: list
         if i % 100 == 0:
             progress_bar.display(i)
 
-        prop_ref = str(csv_asset_item["prop_ref"])
+        lookup_prop_ref = str(csv_asset_item["assetId"])
+        lookup_uprn = str(csv_asset_item["uprn"])
         new_addressLine1 = str(csv_asset_item["addressLine1"])
-        new_addressLine2 = str(csv_asset_item["addressLine2"])
-        new_addressLine3 = str(csv_asset_item["addressLine3"])
+
+        # Agreed rule - if the Ward is out of borough, state this on the address, 
+        new_addressLine2 = 'Hackney'
+        if str(csv_asset_item["addressLine2"]) == 'Out of Borough':
+            new_addressLine2 = 'Out of Borough'
+
+        new_addressLine3 = 'London'
+
         new_addressLine4 = str(csv_asset_item["addressLine4"])
         new_postCode = str(csv_asset_item["postCode"])
-        postPreamble = str(csv_asset_item["postPreamble"])
         
-        # -- Dynamo fields
+        # -- Dynamo fields agreed mapping
         # addressLine1 --> Field 'Dwelling Address VALIDATED'
         # addressLine2 --> The exact phrase "Hackney", unless field 'Ward' is "Out of Borough", in which case blank
         # addressLine3 --> The exact phrase "London"
@@ -44,28 +54,48 @@ def update_assets_with_additional_data(asset_table: Table, assets_from_csv: list
         # postCode --> Field 'Postcode'
         # postPreamble --> delete all data in the field
         # uprn --> unchanged
-        
-        
-        
-        # TODO
-        # Technical note: warn or error if the postcode is different to the existing record postcode
-
 
         # 1. Get asset from dynamoDb
-        asset = get_by_secondary_index(asset_table, "AssetId", "assetId", prop_ref)[0]
+        asset = get_by_secondary_index(asset_table, "AssetId", "assetId", lookup_prop_ref)[0]
 
-        # 3. Add new address info to Address object
-        asset["assetAddress"]["addressLine1"] = ''
-        asset["assetAddress"]["addressLine2"] = ''
-        asset["assetAddress"]["addressLine3"] = ''
-        asset["assetAddress"]["addressLine4"] = ''
-        asset["assetAddress"]["postCode"] = ''
-        asset["assetAddress"]["postPreamble"] = ''
+        # 3a. Check for postcode congruance - if it's not the same, it's likely to be an incorrect dataset
+        if asset["assetAddress"]["postCode"] != new_postCode:
+            Logger.log(f"Warning: new record contains {new_postCode} which is different from existing postcode {asset['assetAddress']['postCode']}")
+            sys.exit()
 
-        # 4. Save changes back to asset
-        asset_table.put_item(Item=asset)
+        # 3b. Check for UPRN congruance - if it's not the same, it's likely to be an incorrect dataset
+        if lookup_uprn != asset["assetAddress"]["uprn"]:
+            Logger.log(f"Warning: new record contains {lookup_uprn} which is different from existing uprn {asset['assetAddress']['uprn']}")
+            sys.exit()
+
+        # 4 Create a request to assets API
+        #url = str(Config.ASSET_API_URL) + str(r"assets") + str('/' + asset["id"]) + str("/address")
+        url = f'{Config.ASSET_API_URL}assets/{asset["id"]}/address'
+        editPayload = {
+            "assetAddress": {
+                "uprn": lookup_uprn,
+                "addressLine1": new_addressLine1,
+                "addressLine2": new_addressLine2,
+                "addressLine3": new_addressLine3,
+                "addressLine4": new_addressLine4,
+                "postCode": new_postCode,
+                "postPreamble": ""
+            }
+        }
+
+        bearer_token = Config.ASSET_API_KEY
+
+        headers = {
+            "Authorization": f"Bearer {bearer_token}",
+            "Content-Type": "application/json"
+        }
+
+        # 5 alt. send to asset api
+        response = requests.patch(url, json=editPayload, headers=headers)
         
-        update_count += 1
+        if response.status_code == 200:
+            Logger.log(f"Record update successful!")
+            update_count += 1
     return update_count
 
 
