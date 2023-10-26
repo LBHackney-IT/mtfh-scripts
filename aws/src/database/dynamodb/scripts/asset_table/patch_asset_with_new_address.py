@@ -36,7 +36,7 @@ def update_assets_with_additional_data(asset_table: Table, assets_from_csv: list
         lookup_uprn = str(csv_asset_item["uprn"])
         new_addressLine1 = str(csv_asset_item["addressLine1"])
 
-        # Agreed rule - if the Ward is out of borough, state this on the address, 
+        # 1. Agreed rule - if the Ward is out of borough, state this on the address, 
         new_addressLine2 = 'Hackney'
         if str(csv_asset_item["addressLine2"]) == 'Out of Borough':
             new_addressLine2 = 'Out of Borough'
@@ -55,7 +55,7 @@ def update_assets_with_additional_data(asset_table: Table, assets_from_csv: list
         # postPreamble --> delete all data in the field
         # uprn --> unchanged
 
-        # 1. Get asset from dynamoDb
+        # 2. Get asset from dynamoDb
         asset = get_by_secondary_index(asset_table, "AssetId", "assetId", lookup_prop_ref)[0]
 
         # 3a. Check for postcode congruance - if it's not the same, it's likely to be an incorrect dataset
