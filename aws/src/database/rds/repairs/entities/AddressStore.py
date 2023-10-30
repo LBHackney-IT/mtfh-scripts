@@ -14,7 +14,7 @@ class AddressStore(Base):
     __table_args__ = {"schema": "dbo"}
 
     address: Mapped[str] = mapped_column(primary_key=True)
-    postcode: Mapped[str] = mapped_column(String(10))
+    postcode: Mapped[str] = mapped_column(String)
     
     to_dict = asdict
 
