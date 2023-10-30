@@ -14,3 +14,5 @@ google-api-python-client>=2.86.0
 pyperclip~=1.8.2
 python-dateutil~=2.8.2
 pyodbc~=4.0.39
+requests~=2.31.0
+Faker~=19.10.0

@@ -139,10 +139,23 @@ class Person:
 
 # --- Asset Table ---
 @dataclass
+class ResponsibleEntityContactDetails:
+    emailAddress: str | None
+
+    @classmethod
+    def from_data(cls, data: Any):
+        return _dataclass_from_data(cls, data)
+
+
+@dataclass
 class ResponsibleEntity:
     id: str
     name: str | None
     responsibleType: str | None
+    contactDetails: ResponsibleEntityContactDetails | None
+
+    def __post_init__(self):
+        self.contactDetails = ResponsibleEntityContactDetails.from_data(self.contactDetails)
 
     @classmethod
     def from_data(cls, data: Any):
@@ -157,7 +170,7 @@ class Patch:
     parentId: str | None
     patchType: str | None
     responsibleEntities: list[ResponsibleEntity]
-    versionNumber: Decimal | None
+    versionNumber: int | None
 
     def __post_init__(self):
         if self.responsibleEntities is None:
