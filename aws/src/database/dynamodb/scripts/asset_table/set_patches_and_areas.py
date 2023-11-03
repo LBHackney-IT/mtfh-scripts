@@ -18,6 +18,8 @@ class Config:
 def set_area_for_asset(writer: BatchWriter, asset: Asset, patches_and_areas: list[Patch]):
     """Sets the patch and area for an asset based on the asset's patch ID"""
     # Get patch and area for asset from patches and areas list
+    print(f"Asset ID: {asset.id}, patches: {asset.patches}")
+    hackney_area_id: str = [area.id for area in patches_and_areas if area.name.lower() == "hackney"][0]
     asset_patch_id = [patch for patch in asset.patches if patch.patchType == "patch"][0].id
     asset_patch = [patch for patch in patches_and_areas
                    if patch.id == asset_patch_id
@@ -29,6 +31,8 @@ def set_area_for_asset(writer: BatchWriter, asset: Asset, patches_and_areas: lis
     # Sanity checks
     assert asset_patch.parentId == asset_area.id, \
         f"Asset patch parent ID {asset_patch.parentId} != asset area ID {asset_area.id}"
+    assert asset_area.id == hackney_area_id, \
+        f"Asset area ID {asset_area.id} != Hackney area ID {hackney_area_id}"
     assert len(asset_patch.responsibleEntities) >= 1, \
         f"Asset {asset.id} patch has no responsible entities"
     assert len(asset_area.responsibleEntities) >= 1, \
