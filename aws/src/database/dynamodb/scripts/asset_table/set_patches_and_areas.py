@@ -1,6 +1,4 @@
 from dataclasses import asdict
-from pathlib import Path
-
 from boto3.dynamodb.table import BatchWriter
 
 from aws.src.database.domain.dynamo_domain_objects import Asset, Patch
@@ -12,9 +10,8 @@ from enums.enums import Stage
 
 class Config:
     STAGE = Stage.HOUSING_DEVELOPMENT
-    WORKDIR = Path(__file__).parent  # gets current directory *even when run as module*
     FAILED_IDS = "failed_ids.csv"  # e.g. Person-Patch-Development.csv
-    LOG_FILE = f"{WORKDIR}/logs/logs.txt"
+    LOG_FILE = "logs.txt"
     LOGGER = Logger(LOG_FILE)
 
 
