@@ -35,7 +35,7 @@ class TenuredAsset:
     type: str | None
 
     @classmethod
-    def from_data(cls, data: Any):
+    def from_data(cls, data: dict):
         return _dataclass_from_data(cls, data)
 
 
@@ -49,9 +49,8 @@ class HouseholdMember:
     type: str | None
 
     @classmethod
-    def from_data(cls, data: Any):
+    def from_data(cls, data: dict):
         return _dataclass_from_data(cls, data)
-
 
 @dataclass
 class Tenure:
@@ -75,7 +74,7 @@ class Tenure:
     terminated: dict | None
 
     @classmethod
-    def from_data(cls, data: Any):
+    def from_data(cls, data: dict):
         return _dataclass_from_data(cls, data)
 
     def __post_init__(self):
@@ -109,7 +108,7 @@ class PersonTenure:
     type: str | None
 
     @classmethod
-    def from_data(cls, data: Any):
+    def from_data(cls, data: dict):
         return _dataclass_from_data(cls, data)
 
 
@@ -130,7 +129,7 @@ class Person:
         self.tenures = [PersonTenure.from_data(tenure) for tenure in self.tenures] if self.tenures is not None else []
 
     @classmethod
-    def from_data(cls, data: Any):
+    def from_data(cls, data: dict):
         return _dataclass_from_data(cls, data)
 
 
@@ -143,7 +142,7 @@ class ResponsibleEntityContactDetails:
     emailAddress: str | None
 
     @classmethod
-    def from_data(cls, data: Any):
+    def from_data(cls, data: dict):
         return _dataclass_from_data(cls, data)
 
 
@@ -158,7 +157,7 @@ class ResponsibleEntity:
         self.contactDetails = ResponsibleEntityContactDetails.from_data(self.contactDetails)
 
     @classmethod
-    def from_data(cls, data: Any):
+    def from_data(cls, data: dict):
         return _dataclass_from_data(cls, data)
 
 
@@ -191,7 +190,7 @@ class AssetTenure:
     endOfTenureDate: str | None
 
     @classmethod
-    def from_data(cls, data: Any):
+    def from_data(cls, data: dict):
         return _dataclass_from_data(cls, data)
 
 
@@ -219,7 +218,7 @@ class Asset:
             self.patches = [Patch.from_data(patch) for patch in self.patches]
 
     @classmethod
-    def from_data(cls, data):
+    def from_data(cls, data: dict):
         return _dataclass_from_data(cls, data)
 
 # --- END Asset Table ---
