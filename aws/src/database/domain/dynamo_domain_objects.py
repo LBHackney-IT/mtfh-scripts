@@ -1,4 +1,4 @@
-from typing import Any, TypeVar, Type
+from typing import TypeVar, Type
 
 from _decimal import Decimal
 from dataclasses import dataclass
@@ -207,6 +207,7 @@ class Asset:
     patches: list[Patch]
     rootAsset: str | None
     tenure: AssetTenure | None
+    parentAssetIds: str | None
     versionNumber: Decimal | None
 
     def __post_init__(self):
