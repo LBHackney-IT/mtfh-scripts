@@ -1,5 +1,5 @@
 from dataclasses import asdict
-from boto3.dynamodb.table import BatchWriter
+from mypy_boto3_dynamodb.service_resource import Table
 
 from aws.src.database.domain.dynamo_domain_objects import Asset, Patch
 from aws.src.database.dynamodb.utils.get_dynamodb_table import get_dynamodb_table
@@ -15,10 +15,10 @@ class Config:
     LOGGER = Logger("set_patches_and_areas_logs")
 
 
-def set_patch_and_area_for_asset(writer: BatchWriter, asset: Asset, patches_and_areas: list[Patch], logger: Logger):
+def set_patch_and_area_for_asset(asset_table: Table, asset: Asset, patches_and_areas: list[Patch], logger: Logger):
     """Sets the patch and area for an asset based on the asset's patch ID"""
     # Get patch and area for asset from patches and areas list
-    print(f"Asset ID: {asset.id}, patches: {[patch.name for patch in asset.patches]}")
+    # print(f"Asset ID: {asset.id}, patches: {[patch.name for patch in asset.patches]}")
     if len(asset.patches) == 2 and "patch" in [patch.patchType for patch in asset.patches]:
         logger.log(f"Asset {asset.id} has more than one patch - nothing to do")
         return
@@ -34,7 +34,7 @@ def set_patch_and_area_for_asset(writer: BatchWriter, asset: Asset, patches_and_
         asset_area = [area for area in patches_and_areas
                       if area.id == asset_patch.parentId
                       and area.patchType == "area"][0]
-    except IndexError as e:
+    except IndexError:
         logger.log(f"Index error for asset {asset.id}")
         return
 
@@ -54,18 +54,17 @@ def set_patch_and_area_for_asset(writer: BatchWriter, asset: Asset, patches_and_
         asset.versionNumber = 0
     else:
         asset.versionNumber += 1
-    if not asset.rootAsset:
-        logger.log(f"No root asset IDs for asset {asset.id}")
-        asset.rootAsset = "NULL"
-    if not asset.parentAssetIds:
-        logger.log(f"No parent asset IDs for asset {asset.id}")
-        asset.parentAssetIds = "NULL"
     asset_dict = asdict(asset)
     for patch in asset_dict["patches"]:
         patch.pop("versionNumber", None)
     try:
         logger.log(f"Asset ID: {asset.id}, New patches: {[patch.name for patch in asset.patches]}")
-        writer.put_item(asset_dict)
+        asset_table.update_item(
+            Key={"id": asset.id},
+            UpdateExpression=f"SET patches = :r, versionNumber = :v",
+            ExpressionAttributeValues={":r": asset_dict["patches"], ":v": asset.versionNumber},
+            ReturnValues="NONE",
+        )
     except Exception as e:
         raise e
 
@@ -75,7 +74,7 @@ def add_failed_asset_id(asset_id: str):
         f.write(f"{asset_id}\n")
 
 
-def main():
+def set_patches_and_areas(start_pk: str | None = None):
     logger = Config.LOGGER
     asset_dynamo_table = get_dynamodb_table(table_name="Assets", stage=Config.STAGE)
     patches_dynamo_table = get_dynamodb_table(table_name="PatchesAndAreas", stage=Config.STAGE)
@@ -88,40 +87,40 @@ def main():
             logger.log(f"Error converting Patch ID: {patch_raw.get('id')} to type Patch")
             print(e)
 
-    scan = asset_dynamo_table.scan(Limit=1000)
+    start_key = {"id": start_pk} if start_pk else None
+    scan = asset_dynamo_table.scan(Limit=1000, ExclusiveStartKey=start_key)
     table_item_count = asset_dynamo_table.item_count
     progress_bar = ProgressBar(table_item_count)
-    updated_count = 0
-    with asset_dynamo_table.batch_writer() as writer:
-        while True:
-            for asset_obj in scan["Items"]:
-                if updated_count % 100 == 0:
-                    progress_bar.display(updated_count, note="Asset items processed")
-                try:
-                    if not asset_obj.get("patches"):
-                        logger.log(f"Asset ID: {asset_obj.get('id')} has no patches")
-                        continue
-                    asset: Asset = Asset.from_data(asset_obj)
-                    set_patch_and_area_for_asset(writer, asset, patches_and_areas, logger)
-                    updated_count += 1
-                except Exception as e:
-                    logger.log(f"Error: Asset ID: {asset_obj.get('id')}, {e}")
-                    add_failed_asset_id(asset_obj.get("id"))
-                    updated_count -= 1
+    processed_count = 39363
+    while True:
+        cycle_start_time = time.time()
+        for asset_obj in scan["Items"]:
+            try:
+                if not asset_obj.get("patches"):
+                    logger.log(f"Asset ID: {asset_obj.get('id')} has no patches")
+                    continue
+                asset: Asset = Asset.from_data(asset_obj)
+                set_patch_and_area_for_asset(asset_dynamo_table, asset, patches_and_areas, logger)
+                pass
+            except Exception as e:
+                logger.log(f"Error: Asset ID: {asset_obj.get('id')}, {e}")
+                add_failed_asset_id(f'{asset_obj.get("id")} - {e}')
+                # raise e
 
-            there_are_more_pages = "LastEvaluatedKey" in scan
-            if there_are_more_pages:
-                updated_count += len(scan["Items"])
-                last_key = scan['LastEvaluatedKey']
-                scan = asset_dynamo_table.scan(ExclusiveStartKey=last_key)
-                print(f'Going to next page with ID: {last_key["id"]} - processed {updated_count} items so far')
-            else:
-                logger.log(f"\nFINAL TOTAL: {updated_count} updated out of {table_item_count}\n")
-                break
+        there_are_more_pages = "LastEvaluatedKey" in scan
+        if there_are_more_pages:
+            processed_count += len(scan["Items"])
+            print(f"{len(scan['Items'])} processed in {round(time.time() - cycle_start_time):,d}s")
+            print(f'Going to next page with ID: {scan["LastEvaluatedKey"]["id"]} - processed {processed_count} items so far')
+            progress_bar.display(processed_count, note="Asset items processed")
+            scan = asset_dynamo_table.scan(ExclusiveStartKey=scan["LastEvaluatedKey"])
+        else:
+            logger.log(f"\nFINAL TOTAL: {processed_count} updated out of {table_item_count}\n")
+            break
 
 
 if __name__ == "__main__":
     start_time = time.time()
-    main()
+    set_patches_and_areas(start_pk=None)
     print(f"Time taken: {round(time.time() - start_time):,d}s")
 
