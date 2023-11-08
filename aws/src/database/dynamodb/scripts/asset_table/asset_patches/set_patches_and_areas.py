@@ -59,6 +59,7 @@ def set_patch_and_area_for_asset(asset_table: Table, asset: Asset, patches_and_a
         patch.pop("versionNumber", None)
     try:
         logger.log(f"Asset ID: {asset.id}, New patches: {[patch.name for patch in asset.patches]}")
+        return
         asset_table.update_item(
             Key={"id": asset.id},
             UpdateExpression=f"SET patches = :r, versionNumber = :v",
