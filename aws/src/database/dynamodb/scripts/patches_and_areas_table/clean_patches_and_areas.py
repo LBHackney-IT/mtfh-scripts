@@ -37,7 +37,7 @@ def link_patches_to_areas(table: Table):
 
         assert len(area_patches) > 0, f"Area {area.name} has no patches"
         for patch in area_patches:
-            patch.parentId = area.id
+            patch.parentId = area.patch_id
             patch.versionNumber += 1
             table.put_item(Item=asdict(patch))
             print(f"Updated {patch.name} to link to {area.name}")
@@ -55,7 +55,7 @@ def set_fake_responsible_entities(table: Table):
 
     for patch in patches_and_areas:
         try:
-            current_id = patch.id
+            current_id = patch.patch_id
             first_name: str = fake.first_name()
             last_name: str = fake.last_name()
             responsibleType = "HousingOfficer" if patch.patchType == "patch" else "HousingAreaManager"
