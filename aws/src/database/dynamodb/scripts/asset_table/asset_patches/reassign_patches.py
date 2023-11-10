@@ -16,7 +16,7 @@ from utils.confirm import confirm
 
 
 class Config:
-    STAGE = Stage.HOUSING_DEVELOPMENT
+    STAGE = Stage.HOUSING_STAGING
     logger = Logger("patch_reassignment")
 
 
@@ -42,20 +42,22 @@ def set_responsible_entities(patches_table: Table, patch_reassignment: PatchReas
 
     responsible_type = "HousingOfficer" if patch.patchType == "patch" else "HousingAreaManager"
     existing_entities = [entity for entity in patch.responsibleEntities if entity.responsibleType == responsible_type]
+    if len(existing_entities) > 1:
+        existing_entities = existing_entities[0:1]
     assert len(existing_entities) == 1, f"Patch {patch.id} has {len(existing_entities)} " \
                                         f"responsible entities of type {responsible_type}"
     assigned_entity = existing_entities[0]
     assert assigned_entity.responsibleType == responsible_type, f"Patch {patch.id} has responsible entity of type " \
                                                                 f"{assigned_entity.responsibleType}"
 
-    Config.logger.log(f"Setting responsible entity for {patch.id} {patch.name} "
-                      f"to {patch_reassignment.officer_name} ({patch_reassignment.email_address})")
+    Config.logger.log(f"Setting responsible entity for, {patch.id}, {patch.name}, "
+                      f"{patch_reassignment.officer_name}, {patch_reassignment.email_address}")
 
     responsible_entity = ResponsibleEntity(
         id=assigned_entity.id,
         name=patch_reassignment.officer_name,
         contactDetails=ResponsibleEntityContactDetails(patch_reassignment.email_address),
-        responsibleType=assigned_entity.responsibleType
+        responsibleType=responsible_type
     )
 
     patches_table.update_item(
