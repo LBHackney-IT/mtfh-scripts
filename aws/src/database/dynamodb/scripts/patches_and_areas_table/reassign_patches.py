@@ -16,7 +16,7 @@ from utils.confirm import confirm
 
 
 class Config:
-    STAGE = Stage.HOUSING_STAGING
+    STAGE = Stage.HOUSING_PRODUCTION
     logger = Logger("patch_reassignment")
 
 
@@ -25,12 +25,15 @@ class PatchReassignment:
     patch_id: str
     patch_name: str
     officer_name: str
+    responsible_type: str
     email_address: str
 
     def __post_init__(self):
         self.patch_id = self.patch_id.strip()
         self.patch_name = self.patch_name.strip().upper()
         self.officer_name = self.officer_name.strip()
+        self.responsible_type = self.responsible_type.strip()
+        assert self.responsible_type in ["HousingOfficer", "HousingAreaManager"]
         self.email_address = self.email_address.strip().lower()
 
 
@@ -40,15 +43,9 @@ def set_responsible_entities(patches_table: Table, patch_reassignment: PatchReas
     else:
         patch.versionNumber += 1
 
-    responsible_type = "HousingOfficer" if patch.patchType == "patch" else "HousingAreaManager"
-    existing_entities = [entity for entity in patch.responsibleEntities if entity.responsibleType == responsible_type]
-    if len(existing_entities) > 1:
-        existing_entities = existing_entities[0:1]
-    assert len(existing_entities) == 1, f"Patch {patch.id} has {len(existing_entities)} " \
-                                        f"responsible entities of type {responsible_type}"
-    assigned_entity = existing_entities[0]
-    assert assigned_entity.responsibleType == responsible_type, f"Patch {patch.id} has responsible entity of type " \
-                                                                f"{assigned_entity.responsibleType}"
+    assigned_entities = [entity for entity in patch.responsibleEntities]
+    assert len(assigned_entities) > 0, f"Patch {patch.id} has no assigned entities"
+    assigned_entity = assigned_entities[0]
 
     Config.logger.log(f"Setting responsible entity for, {patch.id}, {patch.name}, "
                       f"{patch_reassignment.officer_name}, {patch_reassignment.email_address}")
@@ -57,7 +54,7 @@ def set_responsible_entities(patches_table: Table, patch_reassignment: PatchReas
         id=assigned_entity.id,
         name=patch_reassignment.officer_name,
         contactDetails=ResponsibleEntityContactDetails(patch_reassignment.email_address),
-        responsibleType=responsible_type
+        responsibleType=patch_reassignment.responsible_type,
     )
 
     patches_table.update_item(
@@ -81,16 +78,17 @@ def main():
             reassignment = PatchReassignment(
                 patch_id=patch.id,
                 patch_name=patch.name,
+                responsible_type="HousingOfficer" if patch.patchType.strip().lower() == "patch" else "HousingAreaManager",
                 officer_name=f"FAKE_{first_name} FAKE_{last_name}",
-                email_address=f"{first_name}.{last_name}@hackney.gov.uk".lower()
+                email_address=f"{first_name}.{last_name}@hackney.gov.uk"
             )
             set_responsible_entities(table, reassignment, patch)
 
     elif Config.STAGE == Stage.HOUSING_PRODUCTION:
         if not confirm("Are you sure you want to reassign patches in PRODUCTION?"):
             return
-        WORKDIR = Path(__file__).parent  # gets current directory *even when run as module*
-        CSV_FILE = f"{WORKDIR}/input/OfficerPatch.csv"  # e.g. Patch-update-Development.csv
+        WORKDIR = Path(__file__).parent
+        CSV_FILE = f"{WORKDIR}/input/OfficerPatch.csv"
         patch_reassignments_raw = csv_to_dict_list(CSV_FILE)
         patch_reassignments = [PatchReassignment(**assignment) for assignment in patch_reassignments_raw]
         for reassignment in patch_reassignments:
