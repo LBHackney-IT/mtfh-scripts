@@ -1,4 +1,4 @@
-from typing import Any, TypeVar, Type
+from typing import TypeVar, Type
 
 from _decimal import Decimal
 from dataclasses import dataclass
@@ -35,7 +35,7 @@ class TenuredAsset:
     type: str | None
 
     @classmethod
-    def from_data(cls, data: Any):
+    def from_data(cls, data: dict):
         return _dataclass_from_data(cls, data)
 
 
@@ -49,9 +49,8 @@ class HouseholdMember:
     type: str | None
 
     @classmethod
-    def from_data(cls, data: Any):
+    def from_data(cls, data: dict):
         return _dataclass_from_data(cls, data)
-
 
 @dataclass
 class Tenure:
@@ -75,7 +74,7 @@ class Tenure:
     terminated: dict | None
 
     @classmethod
-    def from_data(cls, data: Any):
+    def from_data(cls, data: dict):
         return _dataclass_from_data(cls, data)
 
     def __post_init__(self):
@@ -109,7 +108,7 @@ class PersonTenure:
     type: str | None
 
     @classmethod
-    def from_data(cls, data: Any):
+    def from_data(cls, data: dict):
         return _dataclass_from_data(cls, data)
 
 
@@ -130,7 +129,7 @@ class Person:
         self.tenures = [PersonTenure.from_data(tenure) for tenure in self.tenures] if self.tenures is not None else []
 
     @classmethod
-    def from_data(cls, data: Any):
+    def from_data(cls, data: dict):
         return _dataclass_from_data(cls, data)
 
 
@@ -139,13 +138,26 @@ class Person:
 
 # --- Asset Table ---
 @dataclass
+class ResponsibleEntityContactDetails:
+    emailAddress: str | None
+
+    @classmethod
+    def from_data(cls, data: dict):
+        return _dataclass_from_data(cls, data)
+
+
+@dataclass
 class ResponsibleEntity:
     id: str
     name: str | None
     responsibleType: str | None
+    contactDetails: ResponsibleEntityContactDetails | None
+
+    def __post_init__(self):
+        self.contactDetails = ResponsibleEntityContactDetails.from_data(self.contactDetails)
 
     @classmethod
-    def from_data(cls, data: Any):
+    def from_data(cls, data: dict):
         return _dataclass_from_data(cls, data)
 
 
@@ -157,7 +169,7 @@ class Patch:
     parentId: str | None
     patchType: str | None
     responsibleEntities: list[ResponsibleEntity]
-    versionNumber: Decimal | None
+    versionNumber: int | None
 
     def __post_init__(self):
         if self.responsibleEntities is None:
@@ -178,14 +190,29 @@ class AssetTenure:
     endOfTenureDate: str | None
 
     @classmethod
-    def from_data(cls, data: Any):
+    def from_data(cls, data: dict):
+        return _dataclass_from_data(cls, data)
+    
+
+@dataclass
+class AssetAddress:
+    addressLine1: str | None
+    addressLine2: str | None
+    addressLine3: str | None
+    addressLine4: str | None
+    postCode: str | None
+    postPreamble: str | None
+    uprn: str | None
+
+    @classmethod
+    def from_data(cls, data: dict):
         return _dataclass_from_data(cls, data)
 
 
 @dataclass
 class Asset:
     id: str
-    assetAddress: dict | None
+    assetAddress: AssetAddress | None
     assetCharacteristics: dict | None
     assetId: str | None
     assetLocation: dict | None
@@ -195,6 +222,7 @@ class Asset:
     patches: list[Patch]
     rootAsset: str | None
     tenure: AssetTenure | None
+    parentAssetIds: str | None
     versionNumber: Decimal | None
 
     def __post_init__(self):
@@ -202,11 +230,12 @@ class Asset:
             self.patches = []
 
         self.tenure = AssetTenure.from_data(self.tenure)
+        self.assetAddress = AssetAddress.from_data(self.assetAddress)
         if not all(isinstance(patch, Patch) for patch in self.patches):
             self.patches = [Patch.from_data(patch) for patch in self.patches]
 
     @classmethod
-    def from_data(cls, data):
+    def from_data(cls, data: dict):
         return _dataclass_from_data(cls, data)
 
 # --- END Asset Table ---

@@ -68,7 +68,7 @@ def generate_aws_service(service_name: str, stage: Stage, service_type="resource
             service: ServiceResource = session.resource(service_name)
         case "client":
             # Add to these as needed
-            valid_services = ["ssm", "rds", "es", "ec2"]
+            valid_services = ["ssm", "rds", "es", "ec2", "opensearch"]
             if service_name not in valid_services:
                 raise ValueError(f"Service name must be one of {valid_services}")
             # noinspection PyTypeChecker
