@@ -1,4 +1,5 @@
-from dataclasses import asdict, dataclass
+import uuid
+from dataclasses import dataclass, asdict
 from pathlib import Path
 
 from mypy_boto3_dynamodb.service_resource import Table
@@ -18,23 +19,24 @@ from utils.confirm import confirm
 class Config:
     STAGE = Stage.HOUSING_PRODUCTION
     logger = Logger("patch_reassignment")
+    CSV_FILE = f"{Path(__file__).parent}/input/OfficerPatch.csv"
 
 
 @dataclass
 class PatchReassignment:
-    patch_id: str
-    patch_name: str
-    officer_name: str
-    responsible_type: str
-    email_address: str
+    patchId: str
+    patchName: str
+    officerName: str
+    responsibleType: str
+    emailAddress: str
 
     def __post_init__(self):
-        self.patch_id = self.patch_id.strip()
-        self.patch_name = self.patch_name.strip().upper()
-        self.officer_name = self.officer_name.strip()
-        self.responsible_type = self.responsible_type.strip()
+        self.patch_id = self.patchId.strip()
+        self.patch_name = self.patchName.strip().upper()
+        self.officer_name = self.officerName.strip()
+        self.responsible_type = self.responsibleType.strip()
         assert self.responsible_type in ["HousingOfficer", "HousingAreaManager"]
-        self.email_address = self.email_address.strip().lower()
+        self.email_address = self.emailAddress.strip().lower()
 
 
 def set_responsible_entities(patches_table: Table, patch_reassignment: PatchReassignment, patch: Patch):
@@ -44,18 +46,27 @@ def set_responsible_entities(patches_table: Table, patch_reassignment: PatchReas
         patch.versionNumber += 1
 
     assigned_entities = [entity for entity in patch.responsibleEntities]
-    assert len(assigned_entities) > 0, f"Patch {patch.id} has no assigned entities"
-    assigned_entity = assigned_entities[0]
+    # assert len(assigned_entities) > 0, f"Patch {patch.id} has no assigned entities"
+    # assigned_entity = assigned_entities[0]
 
-    Config.logger.log(f"Setting responsible entity for, {patch.id}, {patch.name}, "
-                      f"{patch_reassignment.officer_name}, {patch_reassignment.email_address}")
+    if len(assigned_entities) == 0:
+        entity_id = str(uuid.uuid4())
+    else:
+        entity_id = assigned_entities[0].id
 
     responsible_entity = ResponsibleEntity(
-        id=assigned_entity.id,
+        id=entity_id,
         name=patch_reassignment.officer_name,
         contactDetails=ResponsibleEntityContactDetails(patch_reassignment.email_address),
         responsibleType=patch_reassignment.responsible_type,
     )
+
+    if responsible_entity.name == "":
+        responsible_entity.name = None
+    if responsible_entity.contactDetails.emailAddress == "":
+        responsible_entity.contactDetails.emailAddress = None
+
+    Config.logger.log(f"New data for patch {patch.id}: {asdict(responsible_entity)}")
 
     patches_table.update_item(
         Key={"id": patch_reassignment.patch_id},
@@ -76,20 +87,18 @@ def main():
             first_name = fake.first_name()
             last_name = fake.last_name()
             reassignment = PatchReassignment(
-                patch_id=patch.id,
-                patch_name=patch.name,
-                responsible_type="HousingOfficer" if patch.patchType.strip().lower() == "patch" else "HousingAreaManager",
-                officer_name=f"FAKE_{first_name} FAKE_{last_name}",
-                email_address=f"{first_name}.{last_name}@hackney.gov.uk"
+                patchId=patch.id,
+                patchName=patch.name,
+                responsibleType="HousingOfficer" if patch.patchType.strip().lower() == "patch" else "HousingAreaManager",
+                officerName=f"FAKE_{first_name} FAKE_{last_name}",
+                emailAddress=f"{first_name}.{last_name}@hackney.gov.uk"
             )
             set_responsible_entities(table, reassignment, patch)
 
     elif Config.STAGE == Stage.HOUSING_PRODUCTION:
         if not confirm("Are you sure you want to reassign patches in PRODUCTION?"):
             return
-        WORKDIR = Path(__file__).parent
-        CSV_FILE = f"{WORKDIR}/input/OfficerPatch.csv"
-        patch_reassignments_raw = csv_to_dict_list(CSV_FILE)
+        patch_reassignments_raw = csv_to_dict_list(Config.CSV_FILE)
         patch_reassignments = [PatchReassignment(**assignment) for assignment in patch_reassignments_raw]
         for reassignment in patch_reassignments:
             patch = [patch for patch in patches if patch.id == reassignment.patch_id][0]
