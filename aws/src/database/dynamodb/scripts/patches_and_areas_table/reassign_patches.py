@@ -86,12 +86,20 @@ def main():
         for patch in patches:
             first_name = fake.first_name()
             last_name = fake.last_name()
+            email_address = f"{first_name}.{last_name}@hackney.gov.uk"
+            
+            # Assign the E2E testing account to HN10 for the frontend tests
+            if patch.name == "HN10":
+                first_name = "E2E"
+                last_name = "Tester"
+                email_address = f"e2e-testing-{Config.STAGE.to_env_name()}-t-and-l"
+
             reassignment = PatchReassignment(
                 patchId=patch.id,
                 patchName=patch.name,
                 responsibleType="HousingOfficer" if patch.patchType.strip().lower() == "patch" else "HousingAreaManager",
                 officerName=f"FAKE_{first_name} FAKE_{last_name}",
-                emailAddress=f"{first_name}.{last_name}@hackney.gov.uk"
+                emailAddress=email_address
             )
             set_responsible_entities(table, reassignment, patch)
 
