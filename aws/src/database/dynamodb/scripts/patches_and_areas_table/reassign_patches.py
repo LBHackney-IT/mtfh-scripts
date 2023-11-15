@@ -92,7 +92,7 @@ def main():
             if patch.name == "HN10":
                 first_name = "E2E"
                 last_name = "Tester"
-                email_address = f"e2e-testing-{Config.STAGE.to_env_name()}-t-and-l"
+                email_address = f"e2e-testing-{Config.STAGE.to_env_name()}-t-and-l@hackney.gov.uk"
 
             reassignment = PatchReassignment(
                 patchId=patch.id,
