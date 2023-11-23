@@ -17,3 +17,4 @@ pyodbc~=4.0.39
 requests~=2.31.0
 Faker~=19.10.0
 elasticsearch~=7.10.1
+pre-commit>=3.5.0
