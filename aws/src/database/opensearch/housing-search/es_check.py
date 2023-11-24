@@ -1,6 +1,8 @@
 import elasticsearch
 from elasticsearch import Elasticsearch
 
+from aws.src.database.domain.elasticsearch.staff import StaffMemberEs
+
 
 class LocalElasticsearchClient:
     def __init__(self, port: int, index: str):
@@ -12,22 +14,34 @@ class LocalElasticsearchClient:
         self.port = port
         self.es_instance = Elasticsearch(f"https://localhost:{port}", verify_certs=False, index=index)
         self._check_connection()
-        self.index = index
+        self._index = index
 
         # Check if index exists
         if not self.es_instance.indices.exists(index):
             raise ValueError(f"Index {index} does not exist. Valid indices are {self.list_all_indices()}")
 
+    def get(self, doc_id: str) -> dict:
+        """Return a document in an index by its ID"""
+        return self.es_instance.get(index=self._index, id=doc_id)
+
     def query(self, query: dict, size: int = 1000) -> list:
         """Return all documents in an index matching a query"""
         query = {"query": query}
-        res = self.es_instance.search(index=self.index, body=query, size=size)
-        print(f"Found {len(res['hits']['hits'])} documents in {self.index} out of {res['hits']['total']['value']}")
+        res = self.es_instance.search(index=self._index, body=query, size=size)
+        print(f"Found {len(res['hits']['hits'])} documents in {self._index} out of {res['hits']['total']['value']}")
         return res["hits"]["hits"]
+
+    def index(self, doc_id: str, body: dict):
+        """Put a document in an index"""
+        self.es_instance.index(index=self._index, id=doc_id, body=body)
 
     def update(self, doc_id: str, body: dict):
         """Update a document in an index"""
-        self.es_instance.update(index=self.index, id=doc_id, body={"doc": body})
+        self.es_instance.update(index=self._index, id=doc_id, body={"doc": body})
+
+    def delete(self, doc_id: str):
+        """Delete a document in an index"""
+        self.es_instance.delete(index=self._index, id=doc_id)
 
     def match_all(self, size: int = 1000) -> list:
         """Return all documents in an index up to the size limit"""
@@ -67,19 +81,11 @@ class LocalElasticsearchClient:
 
 
 def main():
-    process_id = "bdc077e3-4c2e-42a5-b590-f28499623312"
-    local_es = LocalElasticsearchClient(3333, "processes")
-    # assert len(res) == 1
-    # process = res[0]["_source"]
-    # new_targetId = "35ffe2a1-ee7f-c09d-df11-c065d97fa7d0"
-    # process["targetId"] = new_targetId
-    # local_es.update(process_id, process)
-    #
-    local_es.delete_attribute("processes", process_id, "targetid")
-
-    res = local_es.get_by_attribute("id", process_id)
-    print(res)
-
+    local_es = LocalElasticsearchClient(3333, "staff")
+    res = local_es.match_all()
+    staff = [StaffMemberEs.from_es(item) for item in res]
+    for staff_member in staff:
+        print(staff_member.firstName, staff_member.lastName, staff_member.email)
 
 if __name__ == "__main__":
     main()
