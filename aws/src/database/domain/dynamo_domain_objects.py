@@ -212,6 +212,8 @@ class AssetAddress:
 @dataclass
 class Asset:
     id: str
+    areaId: str | None
+    patchId: str | None
     assetAddress: AssetAddress | None
     assetCharacteristics: dict | None
     assetId: str | None
@@ -219,7 +221,6 @@ class Asset:
     assetManagement: dict | None
     assetType: str | None
     isActive: Decimal | None
-    patches: list[Patch]
     rootAsset: str | None
     tenure: AssetTenure | None
     parentAssetIds: str | None
@@ -231,8 +232,7 @@ class Asset:
 
         self.tenure = AssetTenure.from_data(self.tenure)
         self.assetAddress = AssetAddress.from_data(self.assetAddress)
-        if not all(isinstance(patch, Patch) for patch in self.patches):
-            self.patches = [Patch.from_data(patch) for patch in self.patches]
+        
 
     @classmethod
     def from_data(cls, data: dict):
