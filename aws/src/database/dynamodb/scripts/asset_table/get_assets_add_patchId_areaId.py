@@ -85,9 +85,8 @@ def update_assets(asset_table: Table, updated_assets: list[Asset]) -> int:
     for i, asset_item in enumerate(updated_assets):
         if i % 100 == 0:
             progress_bar.display(i)
-
-        asset_item.versionNumber = asset_item.versionNumber + 1 if asset_item.versionNumber else 0
         try:
+            asset_item.versionNumber = asset_item.versionNumber + 1 if asset_item.versionNumber else 0
             asset_table.put_item(Item=asdict(asset_item))
             update_count += 1
             add_processed_id(asset_item.id, True)
