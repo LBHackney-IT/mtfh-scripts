@@ -1,4 +1,5 @@
 import os
+import uuid
 from dataclasses import asdict, dataclass
 from decimal import Decimal
 
@@ -26,8 +27,8 @@ class Config:
         PROCESSED_IDS_FILE = "aws/src/database/dynamodb/scripts/asset_table/output/processed_ids.csv"
     else:
         INPUT_FILE = "input/assetsDev.json"
-        PROCESSED_IDS_FILE = "aws/src/database/dynamodb/scripts/asset_table/output/processed_ids.csv"
-    LIMIT = 1  # Set to False when ready to run on all assets
+        PROCESSED_IDS_FILE = "output/processed_ids.csv"
+    LIMIT = False  # Set to False when ready to run on all assets
 
 
 def add_processed_id(asset_pk: str, success: bool):
@@ -40,8 +41,10 @@ def load_assets(file_path: str) -> list[dict]:
     """Gets assets from a dynamodb json dump file and deserializes them to normal dictionaries"""
     _ds = TypeDeserializer()
     all_assets = []
+
     with open(Config.PROCESSED_IDS_FILE, "r") as f:
-        processed_ids = [line.split(",")[0].strip() for line in f.readlines() if line.split(",")[1].strip() == "False"]
+        lines = f.readlines()
+        processed_ids = [line.split(",")[0].strip() for line in lines]
         print(f"Found {len(processed_ids)} processed ids out of {len(all_assets)} assets")
 
     with open(file_path, "r") as f:
@@ -53,6 +56,7 @@ def load_assets(file_path: str) -> list[dict]:
             all_assets.append(deserialised_asset)
     if Config.LIMIT:
         all_assets = all_assets[:Config.LIMIT]
+    print(f"Processing {len(all_assets)} out of {len(data)} assets")
     return all_assets
 
 
@@ -62,18 +66,27 @@ def change_asset_schema(raw_asset: dict) -> dict | None:
         - Removes patches attribute
         - Sets patchId and areaId attributes
     """
-    if raw_asset.get("patches") is None:
-        raw_asset["patchId"] = None
-        raw_asset["areaId"] = None
-    else:
+
+    if not raw_asset.get("rootAsset") or raw_asset.get("patches") in [None, []]:
+        return None
+    try:
         if len(raw_asset["patches"]) > 1 and Config.STAGE == Stage.HOUSING_PRODUCTION:
             Config.LOGGER.log(f"Prod Asset has more than one patch assigned to it, {raw_asset['id']}, skipping")
             return None
-        patch = [poa_raw for poa_raw in raw_asset["patches"] if poa_raw["patchType"] == "patch"][0]
-        raw_asset["patchId"] = patch["id"] if patch else None
-        raw_asset["areaId"] = patch["parentId"] if patch else None
+
+        patches: list[dict] = [patch for patch in raw_asset["patches"] if patch.get("patchType") == "patch"]
+        patch = patches[0] if patches else None
+        if patch:
+            raw_asset["patchId"] = patch["id"] if patch.get("id") else None
+            raw_asset["areaId"] = patch["parentId"] if patch.get("parentId") else None
+        else:
+            Config.LOGGER.log(f"Asset has no patch assigned, {raw_asset['id']}, skipping")
+            return None
         raw_asset.pop("patches", None)
-    return raw_asset
+        return raw_asset
+    except Exception as e:
+        Config.LOGGER.log(f"Failed to process asset {raw_asset['id']} with error {e}")
+        return None
 
 
 def update_assets(asset_table: Table, updated_assets: list[Asset]) -> int:
@@ -104,8 +117,12 @@ def main():
     for asset_datum in asset_data:
         if asset_datum.get("patches") is None and asset_datum.get("patchId") is not None:
             print(f"Asset {asset_datum['id']} has patchId but no patches, skipping")
+            add_processed_id(asset_datum["id"], False)
             continue
         fixed_asset = change_asset_schema(asset_datum)
+        if fixed_asset is None:
+            add_processed_id(asset_datum["id"], False)
+            continue
         asset = Asset.from_data(fixed_asset)
         assets_to_update.append(asset)
 
