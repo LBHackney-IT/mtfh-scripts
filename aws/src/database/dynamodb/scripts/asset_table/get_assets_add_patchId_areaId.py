@@ -1,7 +1,4 @@
-import os
-import uuid
 from dataclasses import asdict, dataclass
-from decimal import Decimal
 
 from mypy_boto3_dynamodb.service_resource import Table
 from boto3.dynamodb.types import TypeDeserializer
@@ -21,20 +18,20 @@ from utils.confirm import confirm
 class Config:
     TABLE_NAME = "Assets"
     LOGGER = Logger()
-    STAGE = Stage.HOUSING_DEVELOPMENT
+    STAGE = Stage.HOUSING_STAGING
     if Path(__file__).parent.name == "mtfh-scripts":
-        INPUT_FILE = "aws/src/database/dynamodb/scripts/asset_table/input/assetsDev.json"
+        INPUT_FILE = "aws/src/database/dynamodb/scripts/asset_table/input/assetsStaging.json"
         PROCESSED_IDS_FILE = "aws/src/database/dynamodb/scripts/asset_table/output/processed_ids.csv"
     else:
-        INPUT_FILE = "input/assetsDev.json"
+        INPUT_FILE = "input/assetsStaging.json"
         PROCESSED_IDS_FILE = "output/processed_ids.csv"
     LIMIT = False  # Set to False when ready to run on all assets
 
 
-def add_processed_id(asset_pk: str, success: bool):
+def add_processed_id(asset_pk: str, success: bool, reason: str = ""):
     print(f"Processed asset {asset_pk}")
     with open(Config.PROCESSED_IDS_FILE, "a") as f:
-        f.write(f"{asset_pk}, {success}\n")
+        f.write(f"{asset_pk}, {success}, {reason}\n")
 
 
 def load_assets(file_path: str) -> list[dict]:
@@ -42,13 +39,14 @@ def load_assets(file_path: str) -> list[dict]:
     _ds = TypeDeserializer()
     all_assets = []
 
+    with open(file_path, "r") as f:
+        data = f.readlines()
+
     with open(Config.PROCESSED_IDS_FILE, "r") as f:
         lines = f.readlines()
         processed_ids = [line.split(",")[0].strip() for line in lines]
-        print(f"Found {len(processed_ids)} processed ids out of {len(all_assets)} assets")
+        print(f"Found {len(processed_ids)} processed ids out of {len(data)} assets")
 
-    with open(file_path, "r") as f:
-        data = f.readlines()
     for asset_string in data:
         asset_raw = json.loads(asset_string)
         deserialised_asset = {k: _ds.deserialize(v) for k, v in asset_raw["Item"].items()}
@@ -66,8 +64,13 @@ def change_asset_schema(raw_asset: dict) -> dict | None:
         - Removes patches attribute
         - Sets patchId and areaId attributes
     """
-
-    if not raw_asset.get("rootAsset") or raw_asset.get("patches") in [None, []]:
+    if not raw_asset.get("rootAsset"):
+        Config.LOGGER.log(f"Asset has no root asset, {raw_asset['id']}, skipping")
+        add_processed_id(raw_asset["id"], False, "Has no root asset - required field")
+        return None
+    if raw_asset.get("patches") in [None, []]:
+        Config.LOGGER.log(f"Asset has no patches assigned, {raw_asset['id']}, skipping")
+        add_processed_id(raw_asset["id"], False, "No patches assigned")
         return None
     try:
         if len(raw_asset["patches"]) > 1 and Config.STAGE == Stage.HOUSING_PRODUCTION:
@@ -86,6 +89,7 @@ def change_asset_schema(raw_asset: dict) -> dict | None:
         return raw_asset
     except Exception as e:
         Config.LOGGER.log(f"Failed to process asset {raw_asset['id']} with error {e}")
+        add_processed_id(raw_asset["id"], False, str(e))
         return None
 
 
@@ -105,7 +109,7 @@ def update_assets(asset_table: Table, updated_assets: list[Asset]) -> int:
             add_processed_id(asset_item.id, True)
         except Exception as e:
             Config.LOGGER.log(f"Failed to update asset {asset_item.id} with error {e}")
-            add_processed_id(asset_item.id, False)
+            add_processed_id(asset_item.id, False, str(e))
     return update_count
 
 
@@ -121,7 +125,6 @@ def main():
             continue
         fixed_asset = change_asset_schema(asset_datum)
         if fixed_asset is None:
-            add_processed_id(asset_datum["id"], False)
             continue
         asset = Asset.from_data(fixed_asset)
         assets_to_update.append(asset)
