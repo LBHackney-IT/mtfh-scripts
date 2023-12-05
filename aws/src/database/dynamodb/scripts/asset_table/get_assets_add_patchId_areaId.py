@@ -1,4 +1,5 @@
 from dataclasses import asdict, dataclass
+import time
 
 from mypy_boto3_dynamodb.service_resource import Table
 from boto3.dynamodb.types import TypeDeserializer
@@ -25,6 +26,7 @@ class Config:
     else:
         INPUT_FILE = "input/assetsStaging.json"
         PROCESSED_IDS_FILE = "output/processed_ids.csv"
+    ASSETS_PER_SECOND = 8
     LIMIT = False  # Set to False when ready to run on all assets
 
 
@@ -97,6 +99,7 @@ def update_assets(asset_table: Table, updated_assets: list[Asset]) -> int:
     """
     update the asset record that are already assigned to a patch to have areaId and patchId and remove patches
     """
+    delay_per_asset = round(1 / Config.ASSETS_PER_SECOND, 2)
     update_count = 0
     progress_bar = ProgressBar(len(updated_assets))
     for i, asset_item in enumerate(updated_assets):
@@ -107,6 +110,7 @@ def update_assets(asset_table: Table, updated_assets: list[Asset]) -> int:
             asset_table.put_item(Item=asdict(asset_item))
             update_count += 1
             add_processed_id(asset_item.id, True)
+            time.sleep(delay_per_asset)
         except Exception as e:
             Config.LOGGER.log(f"Failed to update asset {asset_item.id} with error {e}")
             add_processed_id(asset_item.id, False, str(e))
