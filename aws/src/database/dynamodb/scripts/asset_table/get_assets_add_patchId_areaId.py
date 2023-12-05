@@ -100,6 +100,7 @@ def update_assets(asset_table: Table, updated_assets: list[Asset]) -> int:
     update the asset record that are already assigned to a patch to have areaId and patchId and remove patches
     """
     delay_per_asset = round(1 / Config.ASSETS_PER_SECOND, 2)
+    print(f"Processing {Config.ASSETS_PER_SECOND} assets per second with a delay of {delay_per_asset} seconds per asset")
     update_count = 0
     progress_bar = ProgressBar(len(updated_assets))
     for i, asset_item in enumerate(updated_assets):
