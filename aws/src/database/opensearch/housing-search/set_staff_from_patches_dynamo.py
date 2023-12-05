@@ -13,7 +13,7 @@ from es_check import LocalElasticsearchClient
 class Config:
     TABLE_NAME = "PatchesAndAreas"
     OUTPUT_CLASS = Patch
-    STAGE = Stage.HOUSING_DEVELOPMENT
+    STAGE = Stage.HOU
     E2E_PATCH = "SH6"
     LOGGER = Logger()
 
@@ -54,7 +54,7 @@ def main():
     patches_raw = table.scan()["Items"]
     all_patches = [Patch.from_data(patch_raw) for patch_raw in patches_raw]
 
-    es_client = LocalElasticsearchClient(3333, "staff")
+    es_client = LocalElasticsearchClient(3333, "asdfas")
 
     patch = all_patches[0]
     set_es_from_patch(es_client, patch, all_patches)
