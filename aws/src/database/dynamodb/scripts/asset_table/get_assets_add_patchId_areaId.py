@@ -1,3 +1,10 @@
+"""
+To set this script up locally, you will need to export the Assets DynamoDB table to JSON, see guide:
+https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/S3DataExport.HowItWorks.html
+
+The Config.INPUT_FILE should be set to the path of the exported DynamoDB JSON file
+"""
+
 from dataclasses import asdict, dataclass
 import time
 
