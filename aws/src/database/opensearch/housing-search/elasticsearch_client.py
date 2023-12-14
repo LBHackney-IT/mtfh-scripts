@@ -3,7 +3,7 @@ from elasticsearch import Elasticsearch
 
 
 class LocalElasticsearchClient:
-    def __init__(self, port: int, index: str):
+    def __init__(self, index: str, port: int = 3333):
         """
         Create a connection to a local Elasticsearch instance
         :param port: Port to connect to

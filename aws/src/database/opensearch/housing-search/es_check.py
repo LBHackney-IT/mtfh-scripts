@@ -5,7 +5,7 @@ from elasticsearch_client import LocalElasticsearchClient
 
 
 def main():
-    es_client = LocalElasticsearchClient(3333, "nov22-assets")
+    es_client = LocalElasticsearchClient(index="nov22-assets", port=3333)
     results = es_client.match_all()
 
     print(results)
