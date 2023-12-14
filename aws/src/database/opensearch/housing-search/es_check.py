@@ -1,4 +1,3 @@
-import elasticsearch
 from elasticsearch import Elasticsearch
 
 from elasticsearch_client import LocalElasticsearchClient

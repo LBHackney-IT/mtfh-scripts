@@ -15,7 +15,7 @@ def get_credentials(stage = Stage.HOUSING_DEVELOPMENT, url_stage: str = None) ->
     """
     if url_stage is None:
         url_stage = stage.value.replace("housing-", "")
-    ssm: SSMClient = generate_aws_service("ssm", stage, "client")
+    ssm: SSMClient = generate_aws_service("ssm", stage)
     path = f"/housing-finance/{url_stage}/google-application-credentials-json"
     credentials = ssm.get_parameter(Name=path)["Parameter"]["Value"]
     return credentials

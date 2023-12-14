@@ -73,4 +73,4 @@ def generate_aws_service(service_name: str, stage: Stage) -> Any:
 
 if __name__ == "__main__":
     # Example usage + For testing
-    generate_aws_service("dynamodb", Stage.BASE_STAGING, "resource")
+    generate_aws_service("dynamodb", Stage.BASE_STAGING)
