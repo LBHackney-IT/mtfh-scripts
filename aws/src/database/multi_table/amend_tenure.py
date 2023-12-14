@@ -38,7 +38,7 @@ _ES_DOMAIN_PARAM_PATH = f"/housing-search-api/{STAGE_PARAM}/elasticsearch-domain
 _JUMP_BOX_INSTANCE_NAME_PATH = "platform-apis-jump-box-instance-name"
 
 # Parameters
-ssm_client = generate_aws_service("ssm", STAGE, "client")
+ssm_client = generate_aws_service("ssm", STAGE)
 ES_DOMAIN = ssm_client.get_parameter(Name=_ES_DOMAIN_PARAM_PATH)["Parameter"]["Value"]
 INSTANCE_ID = ssm_client.get_parameter(Name=_JUMP_BOX_INSTANCE_NAME_PATH)["Parameter"]["Value"]
 
@@ -153,13 +153,13 @@ def update_property_elasticsearch(property_pk):
 
 
 def get_tenure_dynamodb(primary_key=TENURE_ID) -> dict:
-    tenure_table: Table = generate_aws_service("dynamodb", STAGE, "resource").Table(TENURE_TABLE_NAME)
+    tenure_table: Table = generate_aws_service("dynamodb", STAGE).Table(TENURE_TABLE_NAME)
     tenure_item: dict = tenure_table.get_item(Key={"id": primary_key})["Item"]
     return tenure_item
 
 
 def update_tenure_dynamodb(tenure_item: dict):
-    tenure_table: Table = generate_aws_service("dynamodb", STAGE, "resource").Table(TENURE_TABLE_NAME)
+    tenure_table: Table = generate_aws_service("dynamodb", STAGE).Table(TENURE_TABLE_NAME)
     print("\n== DynamoDB Item ==")
     pprint(tenure_item)
     print("== DynamoDB Item ==")
@@ -179,7 +179,7 @@ def update_tenure_dynamodb(tenure_item: dict):
 
 
 def update_property_dynamodb(tenure_item: dict):
-    asset_table: Table = generate_aws_service("dynamodb", STAGE, "resource").Table(PROPERTY_TABLE_NAME)
+    asset_table: Table = generate_aws_service("dynamodb", STAGE).Table(PROPERTY_TABLE_NAME)
     property_id: str = tenure_item["tenuredAsset"]["id"]
     property_item: dict = asset_table.get_item(Key={"id": property_id})["Item"]
     property_tenure = property_item["tenure"]
@@ -204,7 +204,7 @@ def update_property_dynamodb(tenure_item: dict):
 
 
 def update_persons_dynamodb(tenure_item: dict):
-    persons_table: Table = generate_aws_service("dynamodb", STAGE, "resource").Table(PERSONS_TABLE_NAME)
+    persons_table: Table = generate_aws_service("dynamodb", STAGE).Table(PERSONS_TABLE_NAME)
     tenure_id = tenure_item["id"]
 
     household_members: list[dict] = tenure_item["householdMembers"]

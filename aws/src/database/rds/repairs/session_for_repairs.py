@@ -25,7 +25,7 @@ def session_for_repairs(stage: Stage, expire_on_commit=True, local_port=5432) ->
     pg_username_path = f"/repairs-api/{stage.to_env_name()}/postgres-username"
     pg_password_path = f"/repairs-api/{stage.to_env_name()}/postgres-password"
 
-    ssm: SSMClient = generate_aws_service('ssm', stage, 'client')
+    ssm: SSMClient = generate_aws_service('ssm', stage)
     username = ssm.get_parameter(Name=pg_username_path)['Parameter']['Value']
     password = ssm.get_parameter(Name=pg_password_path)['Parameter']['Value']
 

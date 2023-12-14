@@ -13,7 +13,7 @@ def elastic_search():
 
 
 def opensearch():
-    os: OpenSearchServiceClient = generate_aws_service("opensearch", Stage.HOUSING_DEVELOPMENT, "client")
+    os: OpenSearchServiceClient = generate_aws_service("opensearch", Stage.HOUSING_DEVELOPMENT)
     domains = os.list_domain_names()['DomainNames']
     print([domain['DomainName'] for domain in domains])
     res2 = os.describe_domain(DomainName="housing-search-api-es")
