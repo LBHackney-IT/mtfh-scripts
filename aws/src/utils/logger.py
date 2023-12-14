@@ -1,5 +1,5 @@
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 
@@ -8,7 +8,8 @@ class Logger:
         self.log_file_name = "logs" if log_file_name is None else log_file_name
         self.log_file_dir = "logs" if log_file_dir is None else log_file_dir
         self.log_file = f"{self.log_file_dir}/{self.log_file_name}.txt"
-        self.log(f'\n== Logging started: {datetime.now().strftime("%d/%m/%Y %H:%M:%S")} ==')
+        self.start_time = datetime.now()
+        self.log(f'\n== Logging started: {self.start_time.strftime("%d/%m/%Y %H:%M:%S")} ==')
 
     def log(self, message: str, end="\n"):
         """
@@ -22,6 +23,11 @@ class Logger:
         with open(self.log_file, "a") as outfile:
             print(message, file=outfile, end=end)
         print(message, end=end)
+
+    def log_end(self):
+        diff = datetime.now() - self.start_time
+        duration = timedelta(seconds=diff.total_seconds())
+        self.log(f'== Logging ended: {datetime.now().strftime("%d/%m/%Y %H:%M:%S")} duration {duration} ==')
 
     @staticmethod
     def log_call(logger):

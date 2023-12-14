@@ -192,7 +192,7 @@ class AssetTenure:
     @classmethod
     def from_data(cls, data: dict):
         return _dataclass_from_data(cls, data)
-    
+
 
 @dataclass
 class AssetAddress:
@@ -212,27 +212,24 @@ class AssetAddress:
 @dataclass
 class Asset:
     id: str
+    areaId: str | None
+    patchId: str | None
     assetAddress: AssetAddress | None
     assetCharacteristics: dict | None
     assetId: str | None
     assetLocation: dict | None
     assetManagement: dict | None
     assetType: str | None
-    isActive: Decimal | None
-    patches: list[Patch]
+    isActive: int | None
     rootAsset: str | None
     tenure: AssetTenure | None
     parentAssetIds: str | None
-    versionNumber: Decimal | None
+    versionNumber: int | None
 
     def __post_init__(self):
-        if self.patches is None:
-            self.patches = []
-
         self.tenure = AssetTenure.from_data(self.tenure)
         self.assetAddress = AssetAddress.from_data(self.assetAddress)
-        if not all(isinstance(patch, Patch) for patch in self.patches):
-            self.patches = [Patch.from_data(patch) for patch in self.patches]
+
 
     @classmethod
     def from_data(cls, data: dict):

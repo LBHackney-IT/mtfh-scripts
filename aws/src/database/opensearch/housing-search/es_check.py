@@ -1,15 +1,11 @@
-import elasticsearch
 from elasticsearch import Elasticsearch
 
-from elasticsearch_client import LocalElasticsearchClient
 
-
-def main():
-    es_client = LocalElasticsearchClient(index="nov22-assets", port=3333)
-    results = es_client.match_all()
-
-    print(results)
+def elastic_search():
+    es = Elasticsearch("https://localhost:3333", verify_certs=False)
+    res = es.search(index="staff", body={"query": {"match_all": {}}})["hits"]["hits"]
+    print([f'{person["_source"]["firstName"]} {person["_source"]["lastName"]}' for person in res])
 
 
 if __name__ == "__main__":
-    main()
+    elastic_search()
