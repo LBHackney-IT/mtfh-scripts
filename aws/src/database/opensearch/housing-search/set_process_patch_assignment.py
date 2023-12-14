@@ -39,8 +39,5 @@ def main():
     es_client.update(process_id, process["_source"])
 
 
-    pass
-
-
 if __name__ == "__main__":
     main()
