@@ -16,14 +16,6 @@ class ProgressBar:
         :param current: Current number
         :param note: Note to add to the end of the progress bar
         """
-
-        normalized_current = round(((current / self.total) * 100) / self.BAR_LENGTH)
-
-        bar = f"Progress: [{normalized_current * '#'}{(self.BAR_LENGTH - normalized_current) * ' '}] {current}/{self.total} " \
-
-        padded_bar = f"{self.separation}{bar}{self.separation}"
-        print(padded_bar)
-
         progress = current / self.total
         block = int(round(self.BAR_LENGTH * progress))
         bar = f"Progress: [{block * '#'}{(self.BAR_LENGTH - block) * ' '}] {current}/{self.total} " \

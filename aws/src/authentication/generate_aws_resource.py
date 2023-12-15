@@ -40,7 +40,7 @@ def get_session_for_stage(stage: Stage | str) -> Session:
                   f"aws sso login --profile {stage_profile}; || - Run to refresh.\n"
                   f"If you have a {stage_profile} AWS SSO profile, hit enter to run this command and log in:")
             subprocess.Popen(["aws", "sso", "login", "--profile", stage_profile]).wait()
-            input("\nHit enter to try running the script again again")
+            input("\nHit enter to try running the script again")
         except botocore.exceptions.NoRegionError:
             # Thrown when there is no region configured for the profile
             input(f"\nNo region configured for profile {stage_profile}.\n"
@@ -49,35 +49,28 @@ def get_session_for_stage(stage: Stage | str) -> Session:
     return session
 
 
-def generate_aws_service(service_name: str, stage: Stage, service_type="resource") -> Any:
+def generate_aws_service(service_name: str, stage: Stage) -> Any:
     """
     :param service_name: The name of the service to get, e.g. "dynamodb"
     :param stage: The stage to get credentials for
-    :param service_type: The type of service to get, either "resource" or "client"
     :return: The service object
     """
-
     session: Session = get_session_for_stage(stage)
-    match service_type:
-        case "resource":
-            # Add to these as needed
-            valid_services = ["dynamodb"]
-            if service_name not in valid_services:
-                raise ValueError(f"Service name must be one of {valid_services}")
-            # noinspection PyTypeChecker
-            service: ServiceResource = session.resource(service_name)
-        case "client":
-            # Add to these as needed
-            valid_services = ["ssm", "rds", "es", "ec2"]
-            if service_name not in valid_services:
-                raise ValueError(f"Service name must be one of {valid_services}")
-            # noinspection PyTypeChecker
-            service: ServiceResource = session.client(service_name)
-        case _:
-            raise ValueError(f"Type must be one of ['resource', 'client']")
+    service_name = service_name.lower().strip()
+
+    # Info on resources: https://boto3.amazonaws.com/v1/documentation/api/latest/guide/resources.html
+    # Info on clients: https://boto3.amazonaws.com/v1/documentation/api/latest/guide/clients.html
+    valid_resources = ["dynamodb"]
+    valid_clients = ["ssm", "rds", "es", "opensearch"]
+    if service_name in valid_resources:
+        service: ServiceResource = session.resource(service_name)
+    elif service_name in valid_clients:
+        service: ServiceResource = session.client(service_name)
+    else:
+        raise ValueError(f"Valid service names are {valid_resources + valid_clients}")
     return service
 
 
 if __name__ == "__main__":
     # Example usage + For testing
-    generate_aws_service("dynamodb", Stage.BASE_STAGING, "resource")
+    generate_aws_service("dynamodb", Stage.BASE_STAGING)
