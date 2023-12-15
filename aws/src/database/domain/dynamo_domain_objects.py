@@ -228,10 +228,10 @@ class AssetAddress:
 class Asset:
     id: str
     areaId: str | None
+    assetId: str | None
     patchId: str | None
     assetAddress: AssetAddress | None
     assetCharacteristics: dict | None
-    assetId: str | None
     assetLocation: dict | None
     assetManagement: dict | None
     assetType: str | None
@@ -246,8 +246,6 @@ class Asset:
     def __post_init__(self):
         self.tenure = AssetTenure.from_data(self.tenure)
         self.assetAddress = AssetAddress.from_data(self.assetAddress)
-        if not all(isinstance(patch, Patch) for patch in self.patches):
-            self.patches = [Patch.from_data(patch) for patch in self.patches]
 
     @classmethod
     def from_data(cls, data: dict):
