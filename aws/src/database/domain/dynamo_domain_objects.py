@@ -238,6 +238,7 @@ class Asset:
     isActive: int | None
     rootAsset: str | None
     tenure: AssetTenure | None
+    rentGroup: str | None
     parentAssetIds: str | None
     rentGroup: str | None
     versionNumber: int | None
@@ -245,7 +246,8 @@ class Asset:
     def __post_init__(self):
         self.tenure = AssetTenure.from_data(self.tenure)
         self.assetAddress = AssetAddress.from_data(self.assetAddress)
-
+        if not all(isinstance(patch, Patch) for patch in self.patches):
+            self.patches = [Patch.from_data(patch) for patch in self.patches]
 
     @classmethod
     def from_data(cls, data: dict):
