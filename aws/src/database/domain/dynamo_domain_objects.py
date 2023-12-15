@@ -210,26 +210,42 @@ class AssetAddress:
 
 
 @dataclass
+class AssetAddress:
+    addressLine1: str | None
+    addressLine2: str | None
+    addressLine3: str | None
+    addressLine4: str | None
+    postCode: str | None
+    postPreamble: str | None
+    uprn: str | None
+
+    @classmethod
+    def from_data(cls, data: Any):
+        return _dataclass_from_data(cls, data)
+
+
+@dataclass
 class Asset:
     id: str
     areaId: str | None
+    assetId: str | None
     patchId: str | None
     assetAddress: AssetAddress | None
     assetCharacteristics: dict | None
-    assetId: str | None
     assetLocation: dict | None
     assetManagement: dict | None
     assetType: str | None
     isActive: int | None
     rootAsset: str | None
     tenure: AssetTenure | None
+    rentGroup: str | None
     parentAssetIds: str | None
+    rentGroup: str | None
     versionNumber: int | None
 
     def __post_init__(self):
         self.tenure = AssetTenure.from_data(self.tenure)
         self.assetAddress = AssetAddress.from_data(self.assetAddress)
-
 
     @classmethod
     def from_data(cls, data: dict):
