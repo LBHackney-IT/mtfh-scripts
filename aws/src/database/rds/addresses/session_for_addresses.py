@@ -16,7 +16,7 @@ from entities.HackneyAddress import HackneyAddress, Base as HackneyAddressBase
 
 def session_for_addresses(stage: Stage, expire_on_commit=True, local_port=1433) -> sessionmaker[SA_Session]:
     """
-    Connect to cautionary alerts database
+    Connect to addresses database on a local port
     :param stage: Stage to connect to
     :param expire_on_commit: Select to persist detached objects after transaction commit
     :return: SQLAlchemy sessionmaker - to be used as a context manager
