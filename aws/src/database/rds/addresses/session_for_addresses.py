@@ -42,13 +42,11 @@ if __name__ == "__main__":
     """
     Example usage
     """
-    with open("UPRNs.txt", "r") as f:
-        uprns = f.readlines()
-        uprns = [uprn.strip() for uprn in uprns]
-        uprns = [uprn for uprn in uprns if len(uprn) > 3]
+    postcode_start = "E8"
     AddressSession = session_for_addresses(Stage.BASE_STAGING)
     with AddressSession.begin() as session:
-        uprn_entries = ", ".join([f"({uprn})" for uprn in uprns])
-        insert = text(f"INSERT INTO dbo._tmp_export_hackney_address (uprn) VALUES"
-                      f"{uprn_entries}")
-        session.execute(insert)
+        addresses = session.query(HackneyAddress).filter(
+            HackneyAddress.postcode.startswith(postcode_start)
+        ).limit(10).all()
+        for address in addresses:
+            print(address)
