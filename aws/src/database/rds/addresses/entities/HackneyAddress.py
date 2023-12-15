@@ -55,4 +55,4 @@ class HackneyAddress(Base):
     to_dict = asdict
 
     def __repr__(self) -> str:
-        return f"Address(uprn={self.uprn!r}, line_1={self.line1!r}, line_2={self.line2!r})"
+        return f"Address(uprn={self.uprn!r}, line_1={self.line1!r}, line_2={self.line2!r}), postcode={self.postcode!r})"
