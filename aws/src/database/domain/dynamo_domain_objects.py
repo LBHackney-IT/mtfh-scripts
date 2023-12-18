@@ -238,7 +238,6 @@ class Asset:
     isActive: int | None
     rootAsset: str | None
     tenure: AssetTenure | None
-    rentGroup: str | None
     parentAssetIds: str | None
     rentGroup: str | None
     versionNumber: int | None
