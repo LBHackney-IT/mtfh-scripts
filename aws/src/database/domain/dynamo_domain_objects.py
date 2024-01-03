@@ -1,6 +1,5 @@
-from typing import TypeVar, Type
+from typing import TypeVar, Type, Any
 
-from _decimal import Decimal
 from dataclasses import dataclass
 
 from aws.src.utils.safe_object_from_dict import safe_object_from_dict

@@ -3,7 +3,7 @@ from elasticsearch import Elasticsearch
 
 
 class LocalElasticsearchClient:
-    def __init__(self, index: str, port: int = 3333):
+    def __init__(self, index: str | None, port: int = 3333):
         """
         Create a connection to a local Elasticsearch instance
         :param port: Port to connect to
@@ -14,7 +14,6 @@ class LocalElasticsearchClient:
         self._check_connection()
         self._index = index
 
-        # Check if index exists
         if not self.es_instance.indices.exists(index):
             raise ValueError(f"Index {index} does not exist. Valid indices are {self.list_all_indices()}")
 
@@ -59,20 +58,24 @@ class LocalElasticsearchClient:
         }
         return self.query(query, size)
 
-    def set_attribute(self, index: str, doc_id: str, attribute: str, value: str):
+    def set_attribute(self, doc_id: str, attribute: str, value: str):
         """Set an attribute for a document in an index"""
-        self.es_instance.update(index=index, id=doc_id, body={"doc": {attribute: value}})
+        self.es_instance.update(index=self._index, id=doc_id, body={"doc": {attribute: value}})
 
     def delete_attribute(self, index: str, doc_id: str, attribute: str):
         """Delete an attribute for a document in an index"""
-        self.es_instance.update(index=index, id=doc_id, body={"script": f"ctx._source.remove('{attribute}')"})
+        self.es_instance.update(index=self._index, id=doc_id, body={"script": f"ctx._source.remove('{attribute}')"})
 
-    def list_all_indices(self) -> list:
+    def list_all_indices(self) -> list[str]:
         """Return all indices in the Elasticsearch instance"""
-        return list(self.es_instance.indices.get_alias("*").keys())
+        return list(self.es_instance.indices.get_alias(index="*").keys())
 
     def _check_connection(self):
         try:
             self.es_instance.info()
         except elasticsearch.exceptions.ConnectionError:
             print(f"Could not connect to ES at localhost:{self.port} - are you port forwarding?")
+
+    def create_index(self, new_index_name):
+        """Create a new index"""
+        self.es_instance.indices.create(index=new_index_name)
