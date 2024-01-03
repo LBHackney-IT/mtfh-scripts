@@ -15,9 +15,6 @@ class Config:
     LOGGER = Logger()
     STAGE = Stage.HOUSING_DEVELOPMENT
     FILE_PATH = "aws/src/database/data/input/property_table_full.csv"
-    HEADING_FILTERS = {
-        "id": lambda x: bool(x),
-    }
 
 # IMPORTANT: It is advised to open a specific terminal window prior to running this script,
 # so that after the script has run, the terminal will not close, and you will be able to view

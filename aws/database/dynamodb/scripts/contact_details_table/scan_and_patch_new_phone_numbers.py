@@ -19,9 +19,6 @@ class Config:
     LOGGER = Logger()
     STAGE = Stage.HOUSING_DEVELOPMENT
     FILE_PATH = "aws\src\database\input\\bad_phone_numbers.csv"
-    HEADING_FILTERS = {
-        "id": lambda x: bool(x),
-    }
 
 total_count = 0
 update_count = 0

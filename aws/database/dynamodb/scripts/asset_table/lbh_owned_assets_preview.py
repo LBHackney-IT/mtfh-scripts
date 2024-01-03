@@ -22,9 +22,7 @@ class Config:
     LOGGER = Logger()
     STAGE = Stage.HOUSING_DEVELOPMENT
     FILE_PATH = "aws/src/database/data/input/Asset Ownership List - Compact - All Dwellings.csv"
-    HEADING_FILTERS = {
-        "id": lambda x: bool(x),
-    }
+
 
 
 # IMPORTANT: It is advised to open a specific terminal window prior to running this script,

@@ -18,9 +18,6 @@ class Config:
     LOGGER = Logger()
     STAGE = Stage.HOUSING_DEVELOPMENT
     FILE_PATH = "aws\src\database\input\\RELOAD.csv"
-    HEADING_FILTERS = {
-        "id": lambda x: bool(x),
-    }
     ASSET_API_URL = "<REDACTED>"
     ASSET_API_KEY = "<REDACTED>"
 

@@ -16,9 +16,6 @@ class Config:
     LOGGER = Logger()
     STAGE = Stage.HOUSING_STAGING
     FILE_PATH = "aws/src/database/data/input/AdditionalAssetDataStaging.csv"
-    HEADING_FILTERS = {
-        "id": lambda x: bool(x),
-    }
 
 
 def verify_integer(number: str | int | None) -> int:

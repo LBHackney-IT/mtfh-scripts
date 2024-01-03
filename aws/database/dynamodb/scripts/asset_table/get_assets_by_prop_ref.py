@@ -18,9 +18,6 @@ class Config:
     OUTPUT_CLASS = Asset
     LOGGER = Logger()
     STAGE = Stage.HOUSING_STAGING
-    HEADING_FILTERS = {
-        "id": lambda x: bool(x),
-    }
     ITEM_COUNT_LIMIT = 10  # Set to None to return all items
 
 

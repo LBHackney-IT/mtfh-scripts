@@ -15,9 +15,7 @@ class Config:
     LOGGER = Logger()
     STAGE = Stage.HOUSING_DEVELOPMENT
     FILE_PATH = "aws/src/database/data/input/LBH-Owned-Assets.csv"
-    HEADING_FILTERS = {
-        "id": lambda x: bool(x),
-    }
+
 
 # IMPORTANT: See logs\logs.txt for information about the output of the script
 
