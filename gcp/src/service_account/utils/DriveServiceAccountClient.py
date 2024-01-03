@@ -8,8 +8,8 @@ from googleapiclient import errors
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload, MediaIoBaseDownload
 from aws.utils.progress_bar import ProgressBar
+from utils.confirm import confirm
 
-from gcp.src.service_account.utils.confirm import confirm
 
 
 class DriveServiceAccountClient:

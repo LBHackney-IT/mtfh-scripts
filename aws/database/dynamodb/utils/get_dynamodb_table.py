@@ -9,15 +9,13 @@ from aws.authentication.generate_aws_resource import generate_aws_service
 from enums.enums import Stage
 
 
-def get_dynamodb_table(table_name: str, stage: Stage, db_resource: ServiceResource = None) -> Table:
+def get_dynamodb_table(table_name: str, stage: Stage) -> Table:
     """
     :param table_name: Name of the DynamoDB table to connect to (as on AWS)
     :param stage: A valid stage (e.g. Stage.DEVELOPMENT)
-    :param db_resource: A boto3 DynamoDB resource object (optional)
     :return: A boto3 DynamoDB table object
     """
-    if db_resource is None:
-        db_resource: ServiceResource = generate_aws_service("dynamodb", stage)
+    db_resource: ServiceResource = generate_aws_service("dynamodb", stage)
     dynamo_table: Table = db_resource.Table(table_name)
     try:
         # Check that the table exists

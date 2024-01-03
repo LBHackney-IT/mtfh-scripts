@@ -7,7 +7,6 @@ from mypy_boto3_dynamodb.service_resource import Table
 from aws.authentication.generate_aws_resource import generate_aws_service
 from aws.database.dynamodb.utils.get_dynamodb_table import get_dynamodb_table
 from aws.utils.csv_to_dict_list import csv_to_dict_list
-from aws.utils.is_uuid_valid import is_uuid_valid
 from aws.utils.logger import Logger
 from enums.enums import Stage
 from utils.to_rows import cautionary_alert_to_row, person_to_row
@@ -17,8 +16,15 @@ OUTFILE = "../data/output.csv"
 
 logger = Logger()
 
+def is_uuid_valid(uuid_to_test):
+    try:
+        uuid_obj = uuid.UUID(uuid_to_test)
+    except ValueError:
+        return False
+    return str(uuid_obj) == uuid_to_test
 
-def persons_from_ca(cautionary_alerts: list[dict], person_table: Table, dynamo_resource: ServiceResource) -> list[dict]:
+
+def persons_from_ca(cautionary_alerts: list[dict], person_table: Table) -> list[dict]:
     persons = []
 
     mmh_ids = list(set([alert["mmh_id"] for alert in cautionary_alerts if is_uuid_valid(alert["mmh_id"])]))
@@ -39,7 +45,7 @@ def persons_from_ca(cautionary_alerts: list[dict], person_table: Table, dynamo_r
     return persons
 
 
-def tenures_from_persons(persons: list[dict], tenure_table: Table, dynamo_resource: ServiceResource) -> list[dict]:
+def tenures_from_persons(persons: list[dict], tenure_table: Table) -> list[dict]:
     tenures = []
 
     def is_tenure_active(tenure: dict) -> bool:
@@ -97,16 +103,16 @@ def main():
     alert_csv_data = csv_to_dict_list(_file_path)
 
     dynamo_resource: ServiceResource = generate_aws_service("dynamodb", STAGE)
-    person_table: Table = get_dynamodb_table("Persons", STAGE, dynamo_resource)
-    tenure_table: Table = get_dynamodb_table("TenureInformation", STAGE, dynamo_resource)
-    asset_table: Table = get_dynamodb_table("Assets", STAGE, dynamo_resource)
+    person_table: Table = get_dynamodb_table("Persons", STAGE)
+    tenure_table: Table = get_dynamodb_table("TenureInformation", STAGE)
+    asset_table: Table = get_dynamodb_table("Assets", STAGE)
 
     all_rows = [
         header_row
     ]
 
     # Dataset 1 - mmhId -> Person -> Tenure -> Asset
-    persons = persons_from_ca(alert_csv_data, person_table, dynamo_resource)
+    persons = persons_from_ca(alert_csv_data, person_table)
     for person in persons:
         for alert in alert_csv_data:
             if alert["mmh_id"] == person["id"]:
@@ -114,7 +120,7 @@ def main():
 
     filtered_alerts = [alert for alert in alert_csv_data if "matchId" in alert.keys()]
 
-    tenures = tenures_from_persons(persons, tenure_table, dynamo_resource)
+    tenures = tenures_from_persons(persons, tenure_table)
 
     ca_row_data: list[dict] = [cautionary_alert_to_row(alert, header_row, alert["matchId"]) for alert in
                                filtered_alerts]
