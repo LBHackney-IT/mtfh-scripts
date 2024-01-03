@@ -1,4 +1,0 @@
-id,firstName,surname,personTypes
-1,John,Smith,["Student"]
-2,Jane,Smith,"['Student','Teacher']"
-3,Cal,Doe,["Teacher"]

@@ -1,8 +1,7 @@
 """Function to get GCP credentials"""
-from gcp.src.service_account.utils.confirm import confirm
 from mypy_boto3_ssm import SSMClient
 
-from aws.src.authentication.generate_aws_resource import generate_aws_service
+from aws.authentication.generate_aws_resource import generate_aws_service
 from enums.enums import Stage
 
 

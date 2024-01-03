@@ -7,7 +7,7 @@ from google.oauth2 import service_account
 from googleapiclient import errors
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload, MediaIoBaseDownload
-from aws.src.utils.progress_bar import ProgressBar
+from aws.utils.progress_bar import ProgressBar
 
 from gcp.src.service_account.utils.confirm import confirm
 
@@ -234,4 +234,3 @@ class DriveServiceAccountClient:
         total_size = sum([int(file["size"]) for file in files])
         print(f"Total size: {round(total_size / 10 ** 6, 2)}MB")
         return files
-
