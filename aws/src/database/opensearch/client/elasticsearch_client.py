@@ -58,8 +58,8 @@ class LocalElasticsearchClient:
         }
         return self.query(query, size)
 
-    def set_attribute(self, doc_id: str, attribute: str, value: str):
-        """Set an attribute for a document in an index"""
+    def set_attribute(self, doc_id: str, attribute: str, value: str | dict[str:str]):
+        """Set an attribute for a document in an index - use a dict for nested properties"""
         self.es_instance.update(index=self._index, id=doc_id, body={"doc": {attribute: value}})
 
     def delete_attribute(self, index: str, doc_id: str, attribute: str):
