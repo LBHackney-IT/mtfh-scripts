@@ -234,4 +234,3 @@ class DriveServiceAccountClient:
         total_size = sum([int(file["size"]) for file in files])
         print(f"Total size: {round(total_size / 10 ** 6, 2)}MB")
         return files
-
