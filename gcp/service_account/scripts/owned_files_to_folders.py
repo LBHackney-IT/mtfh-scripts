@@ -1,4 +1,4 @@
-from aws.src.utils.progress_bar import ProgressBar
+from aws.utils.progress_bar import ProgressBar
 from gcp.src.service_account.utils.DriveServiceAccountClient import DriveServiceAccountClient
 
 
