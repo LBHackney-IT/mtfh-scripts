@@ -51,12 +51,12 @@ like `Error when retrieving token from sso: Token has expired and refresh failed
 
 You should not need further dependencies to run any scripts.
 
-1. Open the `use_cases.py` file in the root directory of the repository.
+1. Open the `main.py` file in the root directory of the repository.
 2. Click into the functions you want to run and set the Config objects in the files to match your needs.
-3. Call the function in the main section of the `use_cases.py` file.
-4. Run `python3 use_cases.py` in the root directory of the repository to run the script.
+3. Call the function in the main section of the `main.py` file.
+4. Run `python3 main.py` in the root directory of the repository to run the script.
 
-This is done from the use_cases.py file to ensure that imports are relative to the root directory of the repository.
+This is done from the main.py file to ensure that imports are relative to the root directory of the repository.
 
 ## Running tests
 

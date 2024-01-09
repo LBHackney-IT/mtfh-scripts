@@ -7,23 +7,6 @@ from aws.utils.safe_object_from_dict import safe_object_from_dict
 T = TypeVar("T")
 
 
-def _dataclass_from_data(cls: Type[T], data: dict | T | None) -> T:
-    """
-    Converts a dict to a dataclass, or returns the dataclass if it is already one
-    :param cls: The dataclass to convert to
-    :param data: The data to convert
-    :return: The converted dataclass
-    """
-    if isinstance(data, dict):
-        return safe_object_from_dict(cls, data)
-    elif isinstance(data, cls):
-        return data
-    elif data is None:
-        return None
-    else:
-        raise ValueError(f"Cannot convert {data} to {cls}")
-
-
 # --- Tenure Table ---
 @dataclass
 class TenuredAsset:
@@ -34,8 +17,8 @@ class TenuredAsset:
     type: str | None
 
     @classmethod
-    def from_data(cls, data: dict):
-        return _dataclass_from_data(cls, data)
+    def from_data(cls, data: dict | T):
+        return safe_object_from_dict(cls, data)
 
 
 @dataclass
@@ -48,8 +31,8 @@ class HouseholdMember:
     type: str | None
 
     @classmethod
-    def from_data(cls, data: dict):
-        return _dataclass_from_data(cls, data)
+    def from_data(cls, data: dict | T):
+        return safe_object_from_dict(cls, data)
 
 @dataclass
 class Tenure:
@@ -73,8 +56,8 @@ class Tenure:
     terminated: dict | None
 
     @classmethod
-    def from_data(cls, data: dict):
-        return _dataclass_from_data(cls, data)
+    def from_data(cls, data: dict | T):
+        return safe_object_from_dict(cls, data)
 
     def __post_init__(self):
         if self.householdMembers is None:
@@ -107,8 +90,8 @@ class PersonTenure:
     type: str | None
 
     @classmethod
-    def from_data(cls, data: dict):
-        return _dataclass_from_data(cls, data)
+    def from_data(cls, data: dict | T):
+        return safe_object_from_dict(cls, data)
 
 
 @dataclass
@@ -128,8 +111,8 @@ class Person:
         self.tenures = [PersonTenure.from_data(tenure) for tenure in self.tenures] if self.tenures is not None else []
 
     @classmethod
-    def from_data(cls, data: dict):
-        return _dataclass_from_data(cls, data)
+    def from_data(cls, data: dict | T):
+        return safe_object_from_dict(cls, data)
 
 
 # --- END Person Table ---
@@ -141,8 +124,8 @@ class ResponsibleEntityContactDetails:
     emailAddress: str | None
 
     @classmethod
-    def from_data(cls, data: dict):
-        return _dataclass_from_data(cls, data)
+    def from_data(cls, data: dict | T):
+        return safe_object_from_dict(cls, data)
 
 
 @dataclass
@@ -156,8 +139,8 @@ class ResponsibleEntity:
         self.contactDetails = ResponsibleEntityContactDetails.from_data(self.contactDetails)
 
     @classmethod
-    def from_data(cls, data: dict):
-        return _dataclass_from_data(cls, data)
+    def from_data(cls, data: dict | T):
+        return safe_object_from_dict(cls, data)
 
 
 @dataclass
@@ -177,7 +160,7 @@ class Patch:
 
     @classmethod
     def from_data(cls, data):
-        return _dataclass_from_data(cls, data)
+        return safe_object_from_dict(cls, data)
 
 
 @dataclass
@@ -189,8 +172,8 @@ class AssetTenure:
     endOfTenureDate: str | None
 
     @classmethod
-    def from_data(cls, data: dict):
-        return _dataclass_from_data(cls, data)
+    def from_data(cls, data: dict | T):
+        return safe_object_from_dict(cls, data)
 
 
 @dataclass
@@ -204,8 +187,8 @@ class AssetAddress:
     uprn: str | None
 
     @classmethod
-    def from_data(cls, data: dict):
-        return _dataclass_from_data(cls, data)
+    def from_data(cls, data: dict | T):
+        return safe_object_from_dict(cls, data)
 
 
 @dataclass
@@ -219,34 +202,36 @@ class AssetAddress:
     uprn: str | None
 
     @classmethod
-    def from_data(cls, data: Any):
-        return _dataclass_from_data(cls, data)
+    def from_data(cls, data: dict | T):
+        return safe_object_from_dict(cls, data)
 
 
 @dataclass
 class Asset:
     id: str
-    areaId: str | None
     assetId: str | None
+    areaId: str | None
     patchId: str | None
-    assetAddress: AssetAddress | None
-    assetCharacteristics: dict | None
-    assetLocation: dict | None
-    assetManagement: dict | None
     assetType: str | None
-    isActive: int | None
-    rootAsset: str | None
-    tenure: AssetTenure | None
-    parentAssetIds: str | None
     rentGroup: str | None
-    versionNumber: int | None
+    rootAsset: str | None
+    isActive: int | None
+    parentAssetIds: str | None
+    assetLocation: dict | None
+    assetAddress: AssetAddress | None
+    assetManagement: dict | None
+    assetCharacteristics: dict | None
+    tenure: AssetTenure | None
+    versionNumber: int | None = 0
+    boilerHouseId: str | None = ""
 
     def __post_init__(self):
         self.tenure = AssetTenure.from_data(self.tenure)
         self.assetAddress = AssetAddress.from_data(self.assetAddress)
 
     @classmethod
-    def from_data(cls, data: dict):
-        return _dataclass_from_data(cls, data)
+    def from_data(cls, data: dict | T):
+        return safe_object_from_dict(cls, data)
+
 
 # --- END Asset Table ---

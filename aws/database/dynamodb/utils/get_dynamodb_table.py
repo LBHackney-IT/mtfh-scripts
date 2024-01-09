@@ -1,5 +1,3 @@
-# from mypy_boto3_dynamodb import ServiceResource
-# from mypy_boto3_dynamodb.service_resource import Table
 from difflib import get_close_matches
 
 from mypy_boto3_dynamodb import ServiceResource
