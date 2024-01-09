@@ -58,8 +58,13 @@ class LocalElasticsearchClient:
         }
         return self.query(query, size)
 
+<<<<<<<< HEAD:aws/database/opensearch/housing_search/elasticsearch_client.py
     def set_attribute(self, doc_id: str, attribute: str, value: str):
         """Set an attribute for a document in an index"""
+========
+    def set_attribute(self, doc_id: str, attribute: str, value: str | dict[str:str]):
+        """Set an attribute for a document in an index - use a dict for nested properties"""
+>>>>>>>> 36e0e39f878663288021fec9d0c02b6bcb76b641:aws/src/database/opensearch/client/elasticsearch_client.py
         self.es_instance.update(index=self._index, id=doc_id, body={"doc": {attribute: value}})
 
     def delete_attribute(self, index: str, doc_id: str, attribute: str):
