@@ -14,6 +14,9 @@ class LocalElasticsearchClient:
         self._check_connection()
         self._index = index
 
+        if not index:
+            return
+
         if not self.es_instance.indices.exists(index):
             raise ValueError(f"Index {index} does not exist. Valid indices are {self.list_all_indices()}")
 
@@ -79,3 +82,7 @@ class LocalElasticsearchClient:
     def create_index(self, new_index_name):
         """Create a new index"""
         self.es_instance.indices.create(index=new_index_name)
+
+    def delete_index(self, index_name: str):
+        """Delete an index"""
+        self.es_instance.indices.delete(index=index_name)
