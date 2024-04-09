@@ -9,9 +9,9 @@ from enums.enums import Stage
 
 
 def get_session_for_stage(stage: Stage | str) -> Session:
-    try:
+    if isinstance(stage, Stage):
         stage_profile = stage.value.lower()
-    except AttributeError:
+    else:
         stage_profile = stage.lower()
 
     # Get and validate credentials
@@ -31,8 +31,8 @@ def get_session_for_stage(stage: Stage | str) -> Session:
                   f"Hit enter to try again")
         except botocore.exceptions.ClientError:
             # Thrown when profile manually configured in ~/.aws/credentials
-            input(f"\nInvalid Access key ID / Secret access key / Session token for profile {stage.value.lower()}.\n"
-                  f"Update the credentials in your .aws/credentials file for the {stage.value.lower()} profile.\n"
+            input(f"\nInvalid Access key ID / Secret access key / Session token for profile {stage_profile}.\n"
+                  f"Update the credentials in your .aws/credentials file for the {stage_profile} profile.\n"
                   f"Hit enter to try again")
         except botocore.exceptions.TokenRetrievalError:
             # Thrown when using SSO and credentials have expired
@@ -63,9 +63,9 @@ def generate_aws_service(service_name: str, stage: Stage) -> Any:
     valid_resources = ["dynamodb"]
     valid_clients = ["ssm", "rds", "es", "opensearch"]
     if service_name in valid_resources:
-        service: ServiceResource = session.resource(service_name)
+        service: ServiceResource = session.resource(service_name) # type: ignore
     elif service_name in valid_clients:
-        service: ServiceResource = session.client(service_name)
+        service: ServiceResource = session.client(service_name) # type: ignore
     else:
         raise ValueError(f"Valid service names are {valid_resources + valid_clients}")
     return service

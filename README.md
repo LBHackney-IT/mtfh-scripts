@@ -2,32 +2,23 @@
 
 Scripts for use within Modern Tools For Housing
 
-### NOTE:
-
-These Python commands may be different depending on your OS and how you installed Python.
-
-**Try `python` instead of `python3` if you get "command not found".**
-
 ## Requirements
 
-1. A recent version of [Python 3](https://www.python.org/downloads/) (e.g. Python 3.11)
-2. The Pip package manager for Python 3. Try `python3 -m pip --version` to see if you have it installed. If not,
-   try `python3 -m ensurepip` to install it.
+- Docker Desktop or Docker Engine installed with the Docker daemon active
+- [Dev Containers](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers) extension in VSCode or equivalent in your favourite IDE
 
 ## Setup / Installation
 
 1. Clone this repository
-2. Make a venv (local package directory) with `python3 -m venv venv`
-3. Activate the venv
-   - Linux / MacOS: Run `source venv/bin/activate`
-   - Windows: Run `./venv/bin/activate.bat` or `./venv/bin/activate.ps1` depending on what's available (can also be in the \Scripts subdirectory)
-4. Optionally verify the venv is active:
-   - Linux / MacOS: Run `echo $VIRTUAL_ENV` and check it points to the venv
-   - Windows: Run `echo %VIRTUAL_ENV%` and check it points to the venv
-5. Run `python3 -m pip install -r requirements.txt` in the root directory of the repository to install all requirements
-   into the venv.
+2. Look at the .devcontainer/devcontainer.json file and select the option in the "mounts" section based on if you are on Windows or Mac/Linux/WSL
+3. Select the prompt to "Reopen in Container" or equivalent when it appears
+
+Note: First setup may take several minutes to build the Docker container, but subsequent builds will only be a few seconds.
+The common rules of Docker apply where it is built in layers from .devcontainer/Dockerfile and caches layers where possible.
 
 ## Setup / AWS
+
+Note: Your ~/.aws directory will be mounted into the Docker container, so you can set up your AWS credentials on your host machine and access them in the container.
 
 Install the [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2.html) -
 the scripts use AWS CLI profile based authentication to make calls to AWS.
@@ -51,16 +42,4 @@ like `Error when retrieving token from sso: Token has expired and refresh failed
 
 You should not need further dependencies to run any scripts.
 
-1. Open the `main.py` file in the root directory of the repository.
-2. Click into the functions you want to run and set the Config objects in the files to match your needs.
-3. Call the function in the main section of the `main.py` file.
-4. Run `python3 main.py` in the root directory of the repository to run the script.
-
-This is done from the main.py file to ensure that imports are relative to the root directory of the repository.
-
-## Running tests
-
-Tests are in Pytest which is installed as a dependency
-
-1. Open the directory of the test files to run
-2. Run `pytest {test_file_name}.py` to run tests in a file or just `pytest` to run all tests
+Open a script and hit the play button in VSCode or your IDE to run or debug it.
