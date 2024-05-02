@@ -36,13 +36,11 @@ def main():
     ]
     
     for index_to_clear in indexes_to_clear:
-        if index_to_clear in all_indexes:
-            size_in_bytes = storage_for_index(es_client, index_to_clear)
-            formatted_size = f"{size_in_bytes:_}"
-            if confirm(f"Delete index {index_to_clear} with {formatted_size} bytes of data?"):
-                es_client.delete_index(index_to_clear)
-        else:
-            print(f"Index {index_to_clear} not found.")
+        size_in_bytes = storage_for_index(es_client, index_to_clear)
+        formatted_size = f"{size_in_bytes:_}"
+        if confirm(f"Delete index {index_to_clear} with {formatted_size} bytes of data?"):
+            es_client.delete_index(index_to_clear)
+
 
 
 
