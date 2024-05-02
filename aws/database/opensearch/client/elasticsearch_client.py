@@ -2,6 +2,8 @@ import elasticsearch
 from elasticsearch import Elasticsearch
 
 import urllib3
+
+# Suppress warnings about insecure connections - this is because we're connecting to localhost and not using SSL
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 class LocalElasticsearchClient:
