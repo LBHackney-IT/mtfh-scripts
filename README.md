@@ -29,13 +29,12 @@ Provides utils to facilitate connecting to and scripting against:
 This will simplify setup and install various useful tools.
 
 ### Note for Windows
-You must clone and use this repository in WSL for acceptable performance. Also, on Windows you should consider removing the AWS mount in the Devcontainer configuration to improve performance if you notice it is slow. You must mount your AWS directory from your WSL filesystem, not your Windows filesystem. If you experience issues, consider setting up without devcontainers. This is just a limitation of Docker on Windows with no clear fix.
+You must clone and use this repository in WSL for acceptable performance. You must mount your AWS directory from your WSL filesystem, not your Windows filesystem. If you experience issues, consider setting up without devcontainers. This is just a limitation of Docker on Windows with no clear fix.
 
 ### Steps
 1. Ensure you have Docker Desktop or Docker Engine installed with the Docker daemon active
 2. Ensure you have the [Dev Containers](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers) extension in VSCode or equivalent in your favourite IDE
-3. Look at the .devcontainer/devcontainer.json file and select the option in the "mounts" section based on if you are on Windows or Mac/Linux/WSL
-4. Select the prompt to "Reopen in Container" or equivalent when it appears
+3. Select the prompt to "Reopen in Container" or equivalent when it appears or access it from the command menu (Ctrl+Shift+P)
 
 Note: First setup may take several minutes to build the Docker container, but subsequent builds will only be a few seconds.
 The common rules of Docker apply where it is built in layers from .devcontainer/Dockerfile and caches layers where possible.

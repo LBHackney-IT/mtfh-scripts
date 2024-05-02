@@ -24,6 +24,5 @@
 	// Mounts the host .aws folder into the container to allow profile access
 	"mounts": [
 		"source=${env:HOME}/.aws,target=/home/vscode/.aws,type=bind" // macOS, Linux, WSL
-		// "source=${env:USERPROFILE}/.aws,target=/home/vscode/.aws,type=bind" // Windows
 	]
 }
