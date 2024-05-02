@@ -46,5 +46,9 @@ port_forwarding_to_addresses_es:
 		--document AWS-StartPortForwardingSessionToRemoteHost \
 		--parameters ${DATABASE_PARAMS}
 
+kibana:
+	curl -k https://127.0.0.1:${LOCAL_PORT}
+	sensible-browser https://localhost:${LOCAL_PORT}/_plugin/kibana
+
 reset:
 	fuser -n tcp -k ${LOCAL_PORT} && echo "Port ${LOCAL_PORT} cleared" || echo "Port ${LOCAL_PORT} not in use"

@@ -1,6 +1,8 @@
 import elasticsearch
 from elasticsearch import Elasticsearch
 
+import urllib3
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 class LocalElasticsearchClient:
     def __init__(self, index: str | None, port: int = 3333):
@@ -10,7 +12,7 @@ class LocalElasticsearchClient:
         :param index: Index to connect to
         """
         self.port = port
-        self.es_instance = Elasticsearch(f"https://localhost:{port}", verify_certs=False, index=index)
+        self.es_instance = Elasticsearch(hosts=[{'host': 'localhost', 'port': port}], use_ssl=True, verify_certs=False, index=index)
         self._check_connection()
         self._index = index
 
@@ -19,7 +21,7 @@ class LocalElasticsearchClient:
 
         if not self.es_instance.indices.exists(index):
             raise ValueError(f"Index {index} does not exist. Valid indices are {self.list_all_indices()}")
-
+        
     def get(self, doc_id: str) -> dict:
         """Return a document in an index by its ID"""
         return self.es_instance.get(index=self._index, id=doc_id)
@@ -61,7 +63,7 @@ class LocalElasticsearchClient:
         }
         return self.query(query, size)
 
-    def set_attribute(self, doc_id: str, attribute: str, value: str | dict[str:str]):
+    def set_attribute(self, doc_id: str, attribute: str, value: str | dict[str,str]):
         """Set an attribute for a document in an index - use a dict for nested properties"""
         self.es_instance.update(index=self._index, id=doc_id, body={"doc": {attribute: value}})
 
