@@ -1,4 +1,7 @@
 {
     "editor.defaultFormatter": "ms-python.black-formatter",
     "python.analysis.typeCheckingMode": "standard",
+    "[json]": {
+        "editor.defaultFormatter": "vscode.json-language-features"
+    },
 }
