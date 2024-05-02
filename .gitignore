@@ -1,12 +1,14 @@
-.vscode
+*.json
+!.vscode/*.json
+!.devcontainer/*.json
+
 .idea
 __pycache__
 __init__.py
 
 venv
 *.env
-
-*.env
+.env
 
 *.txt
 !requirements.txt
@@ -16,8 +18,6 @@ venv
 *.tsv
 !aws/tests/test_data/*.csv
 !aws/tests/test_data/*.tsv
-
-*.json
 
 config.py
 

@@ -1,0 +1,19 @@
+{
+    // Allows running and debugging the current file with the play button
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python: Current File (Integrated Terminal)",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "cwd": "${fileDirname}",
+            "purpose":["debug-in-terminal"],
+            "env": {
+                "PYTHONPATH": "${cwd}"
+            }
+        },
+    ],
+    
+}
