@@ -42,8 +42,5 @@ def main():
             es_client.delete_index(index_to_clear)
 
 
-
-
-
 if __name__ == "__main__":
     main()
