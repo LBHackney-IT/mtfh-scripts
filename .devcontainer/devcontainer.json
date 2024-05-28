@@ -1,7 +1,7 @@
 // For format details, see https://aka.ms/devcontainer.json. For config options, see the
 // README at: https://github.com/devcontainers/templates/tree/main/src/python
 {
-	"name": "Python 3",
+	"name": "MTFH Scripts",
 	"build": {
 		"dockerfile": "Dockerfile",
 		"context": ".."
@@ -17,7 +17,11 @@
 				"ms-vscode.makefile-tools",
 				"ms-python.black-formatter",
 				"tamasfe.even-better-toml",
-				"lfm.vscode-makefile-term"			]
+				"lfm.vscode-makefile-term",
+				"ms-vsliveshare.vsliveshare",
+				"ms-python.python",
+				"ms-python.flake8"
+			]
 		}
 	},
 
