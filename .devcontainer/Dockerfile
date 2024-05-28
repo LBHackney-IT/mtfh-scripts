@@ -9,4 +9,6 @@ RUN sh scripts/1_pre_requirements.sh
 COPY requirements.txt .
 RUN pip install -r requirements.txt
 
+RUN pipx install ggshield
+
 RUN sh scripts/2_post_requirements.sh
