@@ -5,7 +5,4 @@
         "editor.defaultFormatter": "vscode.json-language-features"
     },
     "editor.formatOnSave": true,
-    "flake8.args": [
-        "--max-line-length=200"
-    ]
 }

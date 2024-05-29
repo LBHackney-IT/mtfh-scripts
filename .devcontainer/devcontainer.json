@@ -19,8 +19,7 @@
 				"tamasfe.even-better-toml",
 				"lfm.vscode-makefile-term",
 				"ms-vsliveshare.vsliveshare",
-				"ms-python.python",
-				"ms-python.flake8"
+				"ms-python.python"
 			]
 		}
 	},
@@ -28,5 +27,14 @@
 	// Mounts the host .aws folder into the container to allow profile access
 	"mounts": [
 		"source=${env:HOME}/.aws,target=/home/vscode/.aws,type=bind" // macOS, Linux, WSL
-	]
+	],
+	"forwardPorts": [5432, 1433],
+	"portsAttributes": {
+		"5432": {
+			"label": "postgres"
+		}
+	},
+	"remoteEnv": {
+		"DB_HOST": "host.docker.internal"
+	  }
 }
