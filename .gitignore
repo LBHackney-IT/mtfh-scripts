@@ -16,9 +16,11 @@ venv
 *.dat
 *.csv
 *.tsv
+*.xlsx
 !aws/tests/test_data/*.csv
 !aws/tests/test_data/*.tsv
 
 config.py
 
 stored_procedures
+.DS_Store
