@@ -22,20 +22,20 @@ def delete_person(person_id: str):
     # Fetch records
     person_record_dynamo = person_table.get_item(Key={"id": person_id})
     if "Item" in person_record_dynamo:
-        print(f"Person found in DynamoDB: {person_record_dynamo['Item']}")
+        print(f"\nPerson found in DynamoDB: {person_record_dynamo['Item']}")
         DYNAMODB_FOUND = True
     else:
-        print("Person not found in DynamoDB - skipping")
+        print("\nPerson not found in DynamoDB - skipping")
     assert "Item" in person_record_dynamo, "Person not found in database"
 
     person_record_es = es_client.get(person_id)
     if person_record_es is not None:
-        print(f"Person found in Elasticsearch: {person_record_es}")
+        print(f"\nPerson found in Elasticsearch: {person_record_es}")
         ELASTICSEARCH_FOUND = True
     else:
-        print("Person not found in Elasticsearch - skipping")
+        print("\nPerson not found in Elasticsearch - skipping")
 
-    if DYNAMODB_FOUND and confirm("Are you sure you want to delete this person?"):
+    if DYNAMODB_FOUND and confirm("\nAre you sure you want to delete this person?"):
         response = person_table.delete_item(
             Key={"id": person_record_dynamo["Item"]["id"]}
         )
@@ -44,10 +44,11 @@ def delete_person(person_id: str):
         ), "Person not deleted"
 
     if ELASTICSEARCH_FOUND and confirm(
-        "Are you sure you want to delete this person from Elasticsearch?"
+        "\nAre you sure you want to delete this person from Elasticsearch?"
     ):
         es_client.delete(person_id)
 
 
 if __name__ == "__main__":
-    delete_person(input("Person ID to delete: "))
+    PERSON_ID = "358dca89-17bb-8815-5bee-ab0a391ee537"  # input("Person ID to delete: ")
+    delete_person(PERSON_ID)
