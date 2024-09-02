@@ -2,9 +2,13 @@ from elasticsearch_client import LocalElasticsearchClient
 
 
 def elastic_search():
-    es_client = LocalElasticsearchClient("persons")
-    res = es_client.query({"match_all": {}}, size=10)
-    print([f'{person["_source"]["firstname"]} {person["_source"]["surname"]}' for person in res])
+    es_client = LocalElasticsearchClient("tenures")
+    TENURE_ID = ""
+
+    tenure = es_client.get(TENURE_ID)
+    assert tenure["_source"].get("paymentReference") is not None
+
+    es_client.delete(TENURE_ID)
 
 
 if __name__ == "__main__":
