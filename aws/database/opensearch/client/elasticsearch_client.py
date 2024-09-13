@@ -1,9 +1,8 @@
 import elasticsearch
+import urllib3
 from elasticsearch import Elasticsearch
 
-import urllib3
-
-# Suppress warnings about insecure connections - this is because we're connecting to localhost and not using SSL
+# Suppress warnings about insecure connections for localhost
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 
@@ -24,8 +23,11 @@ class LocalElasticsearchClient:
         self._check_connection()
         self._index = index
 
-        if not index:
-            return
+        if index:
+            if not self.es_instance.indices.exists(index):
+                raise ValueError(
+                    f"Index {index} does not exist. Valid indices are {self.list_all_indices()}"
+                )
 
         if not self.es_instance.indices.exists(index):
             raise ValueError(
@@ -38,10 +40,8 @@ class LocalElasticsearchClient:
 
     def query(self, query: dict, size: int = 1000) -> list:
         """Return all documents in an index matching a query"""
-        query = {"query": query}
-        res = self.es_instance.search(  # pylint: disable=E1123
-            index=self._index, body=query, size=size
-        )
+        body = {"query": query}
+        res = self.es_instance.search(index=self._index, body=body, size=size)
         print(
             f"Found {len(res['hits']['hits'])} documents in {self._index} out of {res['hits']['total']['value']}"
         )
@@ -61,8 +61,7 @@ class LocalElasticsearchClient:
 
     def match_all(self, size: int = 1000) -> list:
         """Return all documents in an index up to the size limit"""
-        query = {"match_all": {}}
-        return self.query(query, size)
+        return self.query({"match_all": {}}, size)
 
     def get_by_attribute(self, attribute: str, value: str, size=1000) -> list:
         """Return all documents in an index with a given attribute value"""
@@ -98,14 +97,12 @@ class LocalElasticsearchClient:
     def _check_connection(self):
         try:
             self.es_instance.info()
-        except elasticsearch.exceptions.NotFoundError:
-            pass
         except elasticsearch.exceptions.ConnectionError:
             print(
                 f"Could not connect to ES at localhost:{self.port} - are you port forwarding?"
             )
 
-    def create_index(self, new_index_name):
+    def create_index(self, new_index_name: str):
         """Create a new index"""
         self.es_instance.indices.create(index=new_index_name)
 
