@@ -1,14 +1,30 @@
-from elasticsearch_client import LocalElasticsearchClient
+import json
+from elasticsearch import Elasticsearch
+
+
+DUMB_ITEMS = []
+with open("assets.json", "r") as f:
+    DUMB_ITEMS = json.load(f)
 
 
 def elastic_search():
-    es_client = LocalElasticsearchClient("tenures")
-    TENURE_ID = ""
+    index = "assets"
+    # create an elasticsearch client
+    es = Elasticsearch([{"host": "localhost", "port": 9200}])
 
-    tenure = es_client.get(TENURE_ID)
-    assert tenure["_source"].get("paymentReference") is not None
+    # check connection
+    if not es.ping():
+        raise ValueError("Connection failed")
 
-    es_client.delete(TENURE_ID)
+    # create index if it does not exist
+    if not es.indices.exists(index):
+        es.indices.create(index=index)
+
+    # clear all data in the index
+    es.delete_by_query(index=index, body={"query": {"match_all": {}}})
+
+    for item in DUMB_ITEMS:
+        es.index(index=index, id=item["id"], body=item)
 
 
 if __name__ == "__main__":
