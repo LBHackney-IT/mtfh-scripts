@@ -1,14 +1,10 @@
-from aws.database.opensearch.client.elasticsearch_client import LocalElasticsearchClient
+import json
+
+from elasticsearch import Elasticsearch
 
 
 def elastic_search():
-    es_client = LocalElasticsearchClient("tenures")
-    TENURE_ID = ""
-
-    tenure = es_client.get(TENURE_ID)
-    assert tenure["_source"].get("paymentReference") is not None
-
-    es_client.delete(TENURE_ID)
+    pass
 
 
 if __name__ == "__main__":

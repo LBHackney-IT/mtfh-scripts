@@ -1,7 +1,8 @@
 import json
-from elasticsearch import Elasticsearch
-from utils.confirm import confirm
 
+from elasticsearch import Elasticsearch
+
+from utils.confirm import confirm
 
 DUMB_ITEMS = []
 with open("assets.json", "r") as f:
