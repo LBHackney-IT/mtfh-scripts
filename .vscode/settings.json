@@ -1,16 +1,12 @@
 {
+    "python.languageServer": "Pylance",
     "editor.defaultFormatter": "ms-python.black-formatter",
     "python.analysis.typeCheckingMode": "standard",
     "[json]": {
         "editor.defaultFormatter": "vscode.json-language-features"
     },
     "[python]": {
-        "editor.defaultFormatter": "ms-python.black-formatter"
+        "editor.defaultFormatter": "ms-python.black-formatter",
     },
-    "editor.formatOnSave": true,
-    "pylint.args": [
-        "--disable=C0114",
-        "--disable=C0115",
-        "--disable=C0116"
-    ]
+    "editor.formatOnSave": true
 }

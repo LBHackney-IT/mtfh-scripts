@@ -19,8 +19,7 @@
 				"tamasfe.even-better-toml",
 				"lfm.vscode-makefile-term",
 				"ms-vsliveshare.vsliveshare",
-				"ms-python.python",
-				"ms-python.flake8"
+				"ms-python.python"
 			]
 		}
 	},
