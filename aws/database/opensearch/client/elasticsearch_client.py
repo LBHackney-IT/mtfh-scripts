@@ -17,7 +17,7 @@ class LocalElasticsearchClient:
         self.port = port
         self.es_instance = Elasticsearch(
             hosts=[{"host": "localhost", "port": port}],
-            use_ssl=False,
+            use_ssl=True,
             verify_certs=False,
             index=index,
         )
