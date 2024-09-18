@@ -7,9 +7,9 @@
 
 # -- Configuration --
 # Local port to connect to on your machine
-LOCAL_PORT = 3333
+LOCAL_PORT = 9200
 # For Parameter store URL Paths
-ENVIRONMENT = production
+ENVIRONMENT = development
 # Set to AWSCLI Profile name
 PROFILE = housing-${ENVIRONMENT}
 
