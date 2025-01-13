@@ -39,7 +39,9 @@ class LocalElasticsearchClient:
     def query(self, query: dict, size: int = 1000) -> list:
         """Return all documents in an index matching a query"""
         query = {"query": query}
-        res = self.es_instance.search(index=self._index, body=query, size=size)
+        res = self.es_instance.search(  # pylint: disable=E1123
+            index=self._index, body=query, size=size
+        )
         print(
             f"Found {len(res['hits']['hits'])} documents in {self._index} out of {res['hits']['total']['value']}"
         )

@@ -28,3 +28,7 @@ def load_dummy_data():
 
     for item in DUMB_ITEMS:
         es.index(index=index, id=item["id"], body=item)
+
+
+if __name__ == "__main__":
+    load_dummy_data()

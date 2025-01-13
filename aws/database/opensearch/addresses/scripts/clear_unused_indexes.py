@@ -15,7 +15,7 @@ from utils.confirm import confirm
 
 def find_aliased_indexes(es_client: LocalElasticsearchClient) -> list[str]:
     """Returns the names of all indexes that are aliased"""
-    instance_aliases = es_client.es_instance.indices.get_alias(index='*')
+    instance_aliases = es_client.es_instance.indices.get_alias(index="*")
     aliased_indexes: list[str] = []
     for index_name, res in instance_aliases.items():
         index_aliases: dict = res.get("aliases")
@@ -26,8 +26,8 @@ def find_aliased_indexes(es_client: LocalElasticsearchClient) -> list[str]:
 
 def storage_for_index(es_client: LocalElasticsearchClient, index: str) -> int:
     """Returns the storage usage in bytes for a given index"""
-    stats = es_client.es_instance.indices.stats(index=index, metric='store')
-    size_in_bytes = stats['indices'][index]['total']['store']['size_in_bytes']
+    stats = es_client.es_instance.indices.stats(index=index, metric="store")
+    size_in_bytes = stats["indices"][index]["total"]["store"]["size_in_bytes"]
     return size_in_bytes
 
 
@@ -38,20 +38,19 @@ def main():
 
     all_indexes = es_client.list_all_indices()
 
-    indexes_to_preserve = find_aliased_indexes(es_client)
-    if not confirm(f"Preserving indexes: {indexes_to_preserve}"):
-        return
-
     indexes_to_clear = [
-        index for index in all_indexes
-        if index not in indexes_to_preserve
-        and "address" in index
+        index
+        for index in all_indexes
+        if storage_for_index(es_client, index) <= 2048
+        and index.startswith("hackney_addresses_")
     ]
-    
+
     for index_to_clear in indexes_to_clear:
         size_in_bytes = storage_for_index(es_client, index_to_clear)
         formatted_size = f"{size_in_bytes:_}"
-        if confirm(f"Delete index {index_to_clear} with {formatted_size} bytes of data?"):
+        if confirm(
+            f"Delete index {index_to_clear} with {formatted_size} bytes of data?"
+        ):
             es_client.delete_index(index_to_clear)
 
 
