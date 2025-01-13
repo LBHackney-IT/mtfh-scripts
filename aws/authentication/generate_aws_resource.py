@@ -1,9 +1,10 @@
 import subprocess
+from typing import Any, Literal
+
 import boto3
 import botocore.exceptions
 from boto3 import Session
 from boto3.resources.base import ServiceResource
-from typing import Any, Literal
 
 from enums.enums import Stage
 
