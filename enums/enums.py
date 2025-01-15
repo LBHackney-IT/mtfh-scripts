@@ -10,9 +10,13 @@ class Stage(Enum):
     BASE_STAGING = "base-staging"
     BASE_PRODUCTION = "base-production"
 
-    def to_env_name(self) -> str:
+    @property
+    def env_name(self) -> str:
         value = self.value
         for stage_str in ["development", "staging", "production"]:
             if stage_str in value:
                 return stage_str
         raise ValueError(f"Stage {self.value} not recognised")
+
+    def to_env_name(self) -> str:
+        return self.env_name

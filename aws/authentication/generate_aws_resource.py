@@ -71,7 +71,9 @@ def generate_aws_service(service_name: ServiceName, stage: Stage) -> Any:
     # Info on resources: https://boto3.amazonaws.com/v1/documentation/api/latest/guide/resources.html
     # Info on clients: https://boto3.amazonaws.com/v1/documentation/api/latest/guide/clients.html
     valid_resources: list[ServiceName] = ["dynamodb"]
-    valid_clients: list[ServiceName] = ["ssm", "rds", "es", "opensearch", "logs", "sqs"]
+    valid_clients: list[ServiceName] = [
+        s for s in ServiceName.__args__ if s not in valid_resources
+    ]
     if service_name in valid_resources:
         service: ServiceResource = session.resource(service_name)  # type: ignore
     elif service_name in valid_clients:
