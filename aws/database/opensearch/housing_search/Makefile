@@ -7,7 +7,7 @@
 
 # -- Configuration --
 # Local port to connect to on your machine
-LOCAL_PORT = 3333
+LOCAL_PORT = 9200
 # For Parameter store URL Paths
 ENVIRONMENT = staging
 # Set to AWSCLI Profile name
@@ -18,6 +18,7 @@ INSTANCE_ID_PATH := " /platform-apis-jump-box-instance-name"
 ES_DOMAIN_PATH := " /housing-search-api/${ENVIRONMENT}/elasticsearch-domain"
 
 # -- Parameters --
+_ := $(shell aws sts get-caller-identity --profile ${PROFILE} || aws sso login --profile ${PROFILE})
 INSTANCE_ID := $(shell aws ssm get-parameter --name ${INSTANCE_ID_PATH} --region "eu-west-2" --profile ${PROFILE} --query Parameter.Value --output text)
 ES_DOMAIN := $(shell aws ssm get-parameter --name ${ES_DOMAIN_PATH} --region "eu-west-2" --profile ${PROFILE} --query Parameter.Value --output text)
 ES_DOMAIN := $(shell echo ${ES_DOMAIN} | sed 's/https:\/\///g')
@@ -26,17 +27,6 @@ ES_PORT := 443
 DATABASE_PARAMS := '{"host":["${ES_DOMAIN}"], "portNumber":["${ES_PORT}"], "localPortNumber":["${LOCAL_PORT}"]}'
 
 # -- Commands --
-
-# Use this command to login to the AWS SSO service
-sso_login:
-	if (aws sts get-caller-identity --profile ${PROFILE})
-	then
-		echo "Session still valid"
-	else
-		echo "Session expired, logging in"
-		aws sso login --profile ${PROFILE}
-	fi
-
 port_forwarding_to_housing_search:
 	echo "Connecting to ${ES_DOMAIN_PATH} on local port ${LOCAL_PORT}\n\n==="
 	aws ssm start-session \
