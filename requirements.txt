@@ -9,9 +9,10 @@ google>=3.0.0
 google-api-python-client>=2.86.0
 pyperclip~=1.8.2
 python-dateutil~=2.8.2
-pyodbc~=4.0.39
+pyodbc~=5.2.0
 requests~=2.31.0
 Faker~=22.0.0
 elasticsearch~=7.10.1
 pre-commit>=3.5.0
 psycopg2-binary>=2.9.9
+numpy<2
