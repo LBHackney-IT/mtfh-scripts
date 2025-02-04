@@ -11,7 +11,7 @@ LOCAL_PORT = 5432
 # For Parameter store URL Paths
 STAGE := staging
 # Set to AWSCLI Profile name
-PROFILE := "base-${STAGE}"
+PROFILE := "${STAGE}-apis"
 
 # -- Parameter Store paths --
 JUMP_BOX_INSTANCE_NAME_PATH:="platform-apis-jump-box-instance-name"
@@ -22,6 +22,7 @@ POSTGRES_PASSWORD_PATH:=" /uh-api/${STAGE}/postgres-password"
 
 # -- Parameters --
 # Get parameters from parameter store for the profile used
+_ := $(shell aws sts get-caller-identity --profile ${PROFILE} || aws sso login --profile ${PROFILE})
 INSTANCE_ID := $(shell aws ssm get-parameter --name ${JUMP_BOX_INSTANCE_NAME_PATH} --region "eu-west-2" --profile ${PROFILE} --query Parameter.Value --output text)
 REMOTE_HOST := $(shell aws ssm get-parameter --name ${POSTGRES_HOST_PATH} --region "eu-west-2" --profile ${PROFILE} --query Parameter.Value --output text)
 REMOTE_PORT := $(shell aws ssm get-parameter --name ${POSTGRES_PORT_PATH} --region "eu-west-2" --profile ${PROFILE} --query Parameter.Value --output text)
@@ -31,18 +32,6 @@ REMOTE_PASSWORD := $(shell aws ssm get-parameter --with-decryption --name ${POST
 DATABASE_PARAMS = '{"host":["${REMOTE_HOST}"], "portNumber":["${REMOTE_PORT}"], "localPortNumber":["${LOCAL_PORT}"]}'
 
 # -- Commands --
-
-# Use this command to login to the AWS SSO service
-# This will open a browser window to login to the AWS SSO service
-# This is required to use the ssm commands
-sso_login:
-	if (aws sts get-caller-identity --profile ${PROFILE})
-	then
-		echo "Session still valid"
-	else
-		echo "Session expired, logging in"
-		aws sso login --profile ${PROFILE}
-	fi
 
 # Use this command to connect to create a port forwarding session from localhost to the RDS instance via the jump-box
 # This will allow connecting to the database using a GUI tool like pgAdmin, or with local scripts
