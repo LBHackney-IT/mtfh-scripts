@@ -9,7 +9,7 @@
 # Local port to connect to on your machine
 LOCAL_PORT = 5432
 # For Parameter store URL Paths
-ENVIRONMENT ?= development
+ENVIRONMENT := development
 # Set to AWSCLI Profile name
 PROFILE = housing-${ENVIRONMENT}
 
