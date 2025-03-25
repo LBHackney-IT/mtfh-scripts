@@ -69,7 +69,7 @@ def set_id_in_csv_with_asset_id(asset_table: Table, assets_from_csv: list[dict])
 
 def main():
     table = get_dynamodb_table(Config.TABLE_NAME, Config.STAGE)
-    _file_path = "aws\src\database\data\input\Property_extract_from_Nick_May_2023 - Copy of property_active_edit_09_06 (1).csv"
+    _file_path = r"aws\src\database\data\input\update_property_patch_march_2025.csv"
     asset_csv_data = csv_to_dict_list(_file_path)
 
     # Note: Writing to TSV which can be imported into Google Sheets
