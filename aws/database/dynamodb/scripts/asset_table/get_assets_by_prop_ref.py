@@ -54,9 +54,11 @@ def set_id_in_csv_with_asset_id(asset_table: Table, assets_from_csv: list[dict])
             if asset_id is None:
                 asset_item["failed_reason"] = f"Invalid assetId: {asset_item['prop_ref']}. "
                 continue
-            results = get_by_secondary_index(asset_table, "AssetId", "assetId", asset_id)
+            results = get_by_secondary_index(
+                asset_table, "AssetId", "assetId", asset_id)
             if len(results) > 1:
-                asset_item["failed_reason"] = f"Multiple assets found for assetId {asset_item['prop_ref']}. "
+                asset_item[
+                    "failed_reason"] = f"Multiple assets found for assetId {asset_item['prop_ref']}. "
                 continue
             elif len(results) == 0:
                 asset_item["failed_reason"] = f"No assets found for assetId {asset_item['prop_ref']}. "
@@ -69,7 +71,7 @@ def set_id_in_csv_with_asset_id(asset_table: Table, assets_from_csv: list[dict])
 
 def main():
     table = get_dynamodb_table(Config.TABLE_NAME, Config.STAGE)
-    _file_path = r"aws\src\database\data\input\update_property_patch_march_2025.csv"
+    _file_path = "aws\src\database\data\input\Property_extract_from_Nick_May_2023 - Copy of property_active_edit_09_06 (1).csv"
     asset_csv_data = csv_to_dict_list(_file_path)
 
     # Note: Writing to TSV which can be imported into Google Sheets
@@ -79,4 +81,5 @@ def main():
         headings = asset_with_ids[0].keys()
         f.write("\t".join(headings) + "\n")
         for asset in asset_with_ids:
-            f.write("\t".join([str(asset[heading]) for heading in headings]) + "\n")
+            f.write("\t".join([str(asset[heading])
+                    for heading in headings]) + "\n")
