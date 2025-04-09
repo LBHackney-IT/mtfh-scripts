@@ -27,7 +27,6 @@ ES_PORT := 443
 DATABASE_PARAMS := '{"host":["${ES_DOMAIN}"], "portNumber":["${ES_PORT}"], "localPortNumber":["${LOCAL_PORT}"]}'
 
 # -- Commands --
-
 port_forwarding_to_housing_search:
 	echo "Connecting to ${ES_DOMAIN_PATH} on local port ${LOCAL_PORT}\n\n==="
 	aws ssm start-session \

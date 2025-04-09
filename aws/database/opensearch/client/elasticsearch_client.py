@@ -83,7 +83,7 @@ class LocalElasticsearchClient:
             index=self._index, id=doc_id, body={"doc": {attribute: value}}
         )
 
-    def delete_attribute(self, index: str, doc_id: str, attribute: str):
+    def delete_attribute(self, doc_id: str, attribute: str):
         """Delete an attribute for a document in an index"""
         self.es_instance.update(
             index=self._index,
