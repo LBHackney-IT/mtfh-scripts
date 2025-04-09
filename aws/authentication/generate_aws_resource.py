@@ -38,7 +38,10 @@ def get_session_for_stage(stage: Stage | str) -> Session:
                 f"Update the credentials in your .aws/credentials file for the {stage_profile} profile.\n"
                 f"Hit enter to try again"
             )
-        except botocore.exceptions.TokenRetrievalError:
+        except (
+            botocore.exceptions.TokenRetrievalError,
+            botocore.exceptions.SSOTokenLoadError,
+        ):
             # Thrown when using SSO and credentials have expired
             input(
                 f"\nInvalid or expired credentials for profile {stage_profile}.\n"
