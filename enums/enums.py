@@ -9,6 +9,9 @@ class Stage(Enum):
     BASE_DEVELOPMENT = "base-development"
     BASE_STAGING = "base-staging"
     BASE_PRODUCTION = "base-production"
+    DEVELOPMENT_APIS = "development-apis"
+    STAGING_APIS = "staging-apis"
+    PRODUCTION_APIS = "production-apis"
 
     @property
     def env_name(self) -> str:
