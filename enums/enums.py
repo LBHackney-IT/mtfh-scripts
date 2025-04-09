@@ -17,6 +17,9 @@ class Stage(Enum):
     STAGING_APIS = "staging-apis"
     PRODUCTION_APIS = "production-apis"
     DISASTER_RECOVERY = "disaster-recovery"
+    DEVELOPMENT_APIS = "development-apis"
+    STAGING_APIS = "staging-apis"
+    PRODUCTION_APIS = "production-apis"
 
     @property
     def env_name(self) -> Environment:
