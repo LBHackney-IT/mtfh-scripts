@@ -9,7 +9,7 @@
 # Set the local port to use for the port forwarding - connect to this port on your local machine to connect to the RDS
 LOCAL_PORT = 5432
 # For Parameter store URL Paths
-STAGE := staging
+STAGE := production
 # Set to AWSCLI Profile name
 PROFILE := "${STAGE}-apis"
 
