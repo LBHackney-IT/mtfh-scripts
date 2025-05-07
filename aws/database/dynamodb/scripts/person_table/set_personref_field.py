@@ -6,7 +6,7 @@ def process_scan(table, scan, next_person_ref):
     for item in scan.get('Items', []):
         table.update_item(
             Key={'id': item['id']},
-            UpdateExpression="SET PersonRef = :val",
+            UpdateExpression="SET personRef = :val",
             ExpressionAttributeValues={':val': next_person_ref}
         )
         print(f"Assigned personRef {next_person_ref} to id {item['id']}")
