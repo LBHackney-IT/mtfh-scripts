@@ -9,10 +9,9 @@ def process_scan(table, scan, next_person_ref):
             UpdateExpression="SET PersonRef = :val",
             ExpressionAttributeValues={':val': next_person_ref}
         )
-        print(f"Assigned PersonRef {next_person_ref} to id {item['id']}")
+        print(f"Assigned personRef {next_person_ref} to id {item['id']}")
         next_person_ref += 1
 
-    # Return LastEvaluatedKey (if any) and the next available PersonRef value
     return scan.get('LastEvaluatedKey'), next_person_ref
 
 
@@ -33,6 +32,11 @@ def main():
         else:
             break
 
+    last_assigned_ref = next_person_ref - 1
+    with open('last_person_ref.log', 'w') as f:
+        f.write(str(last_assigned_ref))
+
+    print(f"Last assigned personRef was: {last_assigned_ref}")
     print("All done!")
 
 
