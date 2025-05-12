@@ -60,7 +60,9 @@ def get_session_for_stage(stage: Stage | str) -> Session:
     return session
 
 
-ServiceName = Literal["dynamodb", "ssm", "rds", "es", "opensearch", "logs", "sqs"]
+ServiceName = Literal[
+    "dynamodb", "ssm", "rds", "es", "opensearch", "logs", "sqs", "lambda"
+]
 
 
 def generate_aws_service(service_name: ServiceName, stage: Stage) -> Any:
