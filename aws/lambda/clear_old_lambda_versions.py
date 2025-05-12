@@ -3,9 +3,7 @@ from enums.enums import Stage
 from mypy_boto3_lambda import LambdaClient
 
 
-lambda_client: LambdaClient = generate_aws_service(
-    "lambda", Stage.HOUSING_DEVELOPMENT_READONLY
-)
+lambda_client: LambdaClient = generate_aws_service("lambda", Stage.HOUSING_DEVELOPMENT)
 
 
 def get_lambda_versions(function):
@@ -57,9 +55,9 @@ def clean_all_lambda_functions():
 
 
 def main():
-    # clean_all_lambda_functions()
-    eg_function = lambda_client.get_function(FunctionName="processes-api-development")
-    clean_old_lambda_versions(eg_function["Configuration"])
+    clean_all_lambda_functions()
+    # eg_function = lambda_client.get_function(FunctionName="processes-api-development")
+    # clean_old_lambda_versions(eg_function["Configuration"])
 
 
 if __name__ == "__main__":

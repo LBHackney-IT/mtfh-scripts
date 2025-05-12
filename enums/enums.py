@@ -5,7 +5,7 @@ class Stage(Enum):
     HOUSING_PRODUCTION = "housing-production"
     HOUSING_PRODUCTION_READONLY = "housing-production-readonly"
     HOUSING_STAGING = "housing-staging"
-    HOUSING_DEVELOPMENT = "housing-development"
+    HOUSING_DEVELOPMENT = "housingdev"
     HOUSING_DEVELOPMENT_READONLY = "housing-development-readonly"
     BASE_DEVELOPMENT = "base-development"
     BASE_STAGING = "base-staging"
