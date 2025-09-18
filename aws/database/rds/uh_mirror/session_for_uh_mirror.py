@@ -1,22 +1,28 @@
 """
 Connect to RDS instance via port forwarding and execute SQL queries
 """
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, Session as SA_Session
-from sqlalchemy.orm.exc import DetachedInstanceError
-from psycopg2 import connect as psycopg2_connect
-from aws.database.rds.uh_mirror.entities.PropertyAlertNew \
-    import PropertyAlertNew, Base as UHMirrorBase
 
-from mypy_boto3_ssm import SSMClient
+# pylint: disable=E1136
 
-from aws.authentication.generate_aws_resource import generate_aws_service
-from enums.enums import Stage
 
 from random import randint
 
+from mypy_boto3_ssm import SSMClient
+from psycopg2 import connect as psycopg2_connect
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Session as SA_Session
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm.exc import DetachedInstanceError
 
-def session_for_uh_mirror(stage: Stage, expire_on_commit=True, local_port=5432) -> sessionmaker[SA_Session]:
+from aws.authentication.generate_aws_resource import generate_aws_service
+from aws.database.rds.uh_mirror.entities.PropertyAlertNew import Base as UHMirrorBase
+from aws.database.rds.uh_mirror.entities.PropertyAlertNew import PropertyAlertNew
+from enums.enums import Stage
+
+
+def session_for_uh_mirror(
+    stage: Stage, expire_on_commit=True, local_port=5432
+) -> sessionmaker[SA_Session]:
     """
     Connect to cautionary alerts database
     :param stage: Stage to connect to
@@ -28,13 +34,19 @@ def session_for_uh_mirror(stage: Stage, expire_on_commit=True, local_port=5432) 
     pg_username_path = f"/uh-api/{stage.to_env_name()}/postgres-username"
     pg_password_path = f"/uh-api/{stage.to_env_name()}/postgres-password"
 
-    ssm: SSMClient = generate_aws_service('ssm', stage, 'client')
-    username = ssm.get_parameter(Name=pg_username_path)['Parameter']['Value']
-    password = ssm.get_parameter(Name=pg_password_path)['Parameter']['Value']
+    ssm: SSMClient = generate_aws_service("ssm", stage)
+    username = ssm.get_parameter(Name=pg_username_path)["Parameter"].get("Value")
+    password = ssm.get_parameter(Name=pg_password_path)["Parameter"].get("Value")
 
-    connection_string = f"postgresql://{username}:{password}@localhost:{local_port}/uh_mirror"
-    engine = create_engine("postgresql+psycopg2://", creator=lambda: psycopg2_connect(connection_string), echo=True)
-    UHMirrorBase.metadata.create_all(bind=engine)
+    connection_string = (
+        f"postgresql://{username}:{password}@localhost:{local_port}/uh_mirror"
+    )
+    engine = create_engine(
+        "postgresql+psycopg2://",
+        creator=lambda: psycopg2_connect(connection_string),
+        echo=True,
+    )
+    UHMirrorBase.metadata.reflect(bind=engine)
 
     Session = sessionmaker(bind=engine, expire_on_commit=expire_on_commit)
 
@@ -42,19 +54,18 @@ def session_for_uh_mirror(stage: Stage, expire_on_commit=True, local_port=5432) 
 
 
 if __name__ == "__main__":
-    """
-    Example usage
-    """
     session_stage = Stage.BASE_STAGING
 
     # Expire on commit means that objects can only be accessed within the "with" clause and remain connected to the db
     CaSession = session_for_uh_mirror(session_stage, expire_on_commit=True)
     with CaSession.begin() as session:
-        alerts = session.query(PropertyAlertNew) \
-            .where(PropertyAlertNew.alert_id.is_not(None)) \
-            .where(PropertyAlertNew.person_name.contains("A")) \
-            .limit(10) \
+        alerts = (
+            session.query(PropertyAlertNew)
+            .where(PropertyAlertNew.alert_id.is_not(None))
+            .where(PropertyAlertNew.person_name.contains("A"))
+            .limit(10)
             .all()
+        )
 
         # Use the entity object directly
         print(alerts[0].person_name)
@@ -71,9 +82,11 @@ if __name__ == "__main__":
     # With expire_on_commit set to False, objects can be accessed outside of the "with" clause, but will not sync to db
     CaSession = session_for_uh_mirror(session_stage, expire_on_commit=False)
     with CaSession.begin() as session:
-        alerts = session.query(PropertyAlertNew) \
-            .filter(PropertyAlertNew.alert_id == "5d31e525-99af-4264-9e4f-891b1828043b") \
+        alerts = (
+            session.query(PropertyAlertNew)
+            .filter(PropertyAlertNew.alert_id == "5d31e525-99af-4264-9e4f-891b1828043b")
             .all()
+        )
 
         alert = alerts[0]
         # Update value, will sync with db when exiting the "with" clause

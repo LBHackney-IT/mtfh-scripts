@@ -8,5 +8,11 @@
     "[python]": {
         "editor.defaultFormatter": "ms-python.black-formatter",
     },
-    "editor.formatOnSave": true
+    "editor.formatOnSave": true,
+    "[ignore]": {
+        "editor.defaultFormatter": "foxundermoon.shell-format"
+    },
+    "editor.codeActionsOnSave": {
+        "source.organizeImports": "always",
+    }
 }

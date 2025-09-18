@@ -1,5 +1,7 @@
 [MESSAGES CONTROL]
-disable=C0114,C0115,C0116,C0301,W1514,W3101
+disable=C0114,C0115,C0116,C0301,W1514,W3101,invalid-name
 
 [MASTER]
 extension-pkg-allow-list=aws.authentication
+
+ignored-classes=sqlalchemy.orm.session.sessionmaker
