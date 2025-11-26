@@ -1,9 +1,9 @@
 """
 Script to copy SSM parameters between AWS accounts.
 Can be used for disaster recovery or other migrations.
-To use, edit the STAGE_SOURCE, STAGE_TARGET, PARAMETER_PREFIX_TO_COPY,
-and SSM_PARAMETERS_TO_COPY variables as needed.
-Then, edit the main function to choose between fetching by prefix or by name.
+Edit the STAGE_SOURCE and STAGE_TARGET variables to set source and target accounts.
+Edit the OPERATION_TYPE variable to choose between copying by prefix or by name,
+  then set the relevant values for PARAMETER_BY_PREFIX_PREFIX or PARAMETER_BY_NAME_NAMES.
 """
 
 from typing_extensions import Literal
