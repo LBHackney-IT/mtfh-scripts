@@ -117,6 +117,7 @@ def main() -> None:
     """Execute the list of functions in sequence."""
     start_all = time.time()
 
+    # TODO: This could be improved by including running the ECS task for charges processing
     for function in lambda_functions:
         trigger_lambda(function)
 
