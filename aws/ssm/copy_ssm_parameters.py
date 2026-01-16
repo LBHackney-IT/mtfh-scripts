@@ -70,16 +70,20 @@ def migrate_parameters(parameters: list[ParameterTypeDef]):
         print(parameter["Name"])
 
         # Check if parameter already exists in target account - skip if values match
-        existing_param = ssm_target.get_parameter(
-            Name=parameter["Name"], WithDecryption=True
-        ).get("Parameter")
-        if existing_param and "Value" in existing_param:
-            print(f"Param {parameter['Name']} already: {existing_param['Value']}")
-            if existing_param["Value"] == parameter["Value"]:
-                print("Values match, skipping...")
-                continue
-            else:
-                print("Values differ.")
+        try:
+            existing_param = ssm_target.get_parameter(
+                Name=parameter["Name"], WithDecryption=True
+            ).get("Parameter")
+            if existing_param and "Value" in existing_param:
+                print(f"Param {parameter['Name']} already: {existing_param['Value']}")
+                if existing_param["Value"] == parameter["Value"]:
+                    print("Values match, skipping...")
+                    continue
+                else:
+                    print("Values differ.")
+        except ssm_target.exceptions.ParameterNotFound:
+            print("Parameter not found in target account, proceeding to create.")
+            pass
 
         # Ask for confirmation before overwriting
         if not confirm(f"Copy parameter {parameter['Name']} to target account?"):
