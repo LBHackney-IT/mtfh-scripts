@@ -14,7 +14,7 @@ class Base(MappedAsDataclass, DeclarativeBase):
 class ProprefPaymentref(Base):
     __tablename__ = "propref_paymentref"
 
-    Id: Mapped[int] = mapped_column(primary_key=True)
+    Id: Mapped[int] = mapped_column(primary_key=True, init=False)
     PropertyRefNumber: Mapped[str] = mapped_column(String(50))
     PaymentRefNumber: Mapped[str] = mapped_column(String(50))
     CreatedAt: Mapped[str] = mapped_column(TIMESTAMP)
