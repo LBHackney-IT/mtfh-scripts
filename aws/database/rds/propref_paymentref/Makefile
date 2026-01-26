@@ -1,5 +1,4 @@
 .ONESHELL:
-
 # Requires AWS CLI Profile matching housing-${ENVIRONMENT} to be set up
 # Requires AWS Session Manager Plugin to be installed:
 # 	https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-install-plugin.html
