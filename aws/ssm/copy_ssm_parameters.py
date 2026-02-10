@@ -70,9 +70,12 @@ def migrate_parameters(parameters: list[ParameterTypeDef]):
         print(parameter["Name"])
 
         # Check if parameter already exists in target account - skip if values match
-        existing_param = ssm_target.get_parameter(
-            Name=parameter["Name"], WithDecryption=True
-        ).get("Parameter")
+        try:
+            existing_param = ssm_target.get_parameter(
+                Name=parameter["Name"], WithDecryption=True
+            ).get("Parameter")
+        except:     
+            existing_param = None
         if existing_param and "Value" in existing_param:
             print(f"Param {parameter['Name']} already: {existing_param['Value']}")
             if existing_param["Value"] == parameter["Value"]:
