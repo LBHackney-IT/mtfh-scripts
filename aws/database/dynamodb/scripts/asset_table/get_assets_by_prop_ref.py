@@ -54,9 +54,11 @@ def set_id_in_csv_with_asset_id(asset_table: Table, assets_from_csv: list[dict])
             if asset_id is None:
                 asset_item["failed_reason"] = f"Invalid assetId: {asset_item['prop_ref']}. "
                 continue
-            results = get_by_secondary_index(asset_table, "AssetId", "assetId", asset_id)
+            results = get_by_secondary_index(
+                asset_table, "AssetId", "assetId", asset_id)
             if len(results) > 1:
-                asset_item["failed_reason"] = f"Multiple assets found for assetId {asset_item['prop_ref']}. "
+                asset_item[
+                    "failed_reason"] = f"Multiple assets found for assetId {asset_item['prop_ref']}. "
                 continue
             elif len(results) == 0:
                 asset_item["failed_reason"] = f"No assets found for assetId {asset_item['prop_ref']}. "
@@ -79,4 +81,5 @@ def main():
         headings = asset_with_ids[0].keys()
         f.write("\t".join(headings) + "\n")
         for asset in asset_with_ids:
-            f.write("\t".join([str(asset[heading]) for heading in headings]) + "\n")
+            f.write("\t".join([str(asset[heading])
+                    for heading in headings]) + "\n")
