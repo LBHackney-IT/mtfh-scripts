@@ -1,6 +1,5 @@
-from typing import TypeVar, Type, Any
-
 from dataclasses import dataclass
+from typing import Any, Type, TypeVar
 
 from aws.utils.safe_object_from_dict import safe_object_from_dict
 
@@ -33,6 +32,7 @@ class HouseholdMember:
     @classmethod
     def from_data(cls, data: dict | T):
         return safe_object_from_dict(cls, data)
+
 
 @dataclass
 class Tenure:
@@ -70,7 +70,9 @@ class Tenure:
             self.notices = []
 
         self.tenuredAsset = TenuredAsset.from_data(self.tenuredAsset)
-        self.householdMembers = [HouseholdMember.from_data(member) for member in self.householdMembers]
+        self.householdMembers = [
+            HouseholdMember.from_data(member) for member in self.householdMembers
+        ]
 
 
 # --- END Tenure Table ---
@@ -108,7 +110,11 @@ class Person:
     def __post_init__(self):
         if self.personTypes is None:
             self.personTypes = []
-        self.tenures = [PersonTenure.from_data(tenure) for tenure in self.tenures] if self.tenures is not None else []
+        self.tenures = (
+            [PersonTenure.from_data(tenure) for tenure in self.tenures]
+            if self.tenures is not None
+            else []
+        )
 
     @classmethod
     def from_data(cls, data: dict | T):
@@ -136,7 +142,9 @@ class ResponsibleEntity:
     contactDetails: ResponsibleEntityContactDetails | None
 
     def __post_init__(self):
-        self.contactDetails = ResponsibleEntityContactDetails.from_data(self.contactDetails)
+        self.contactDetails = ResponsibleEntityContactDetails.from_data(
+            self.contactDetails
+        )
 
     @classmethod
     def from_data(cls, data: dict | T):
@@ -156,7 +164,9 @@ class Patch:
     def __post_init__(self):
         if self.responsibleEntities is None:
             self.responsibleEntities = []
-        self.responsibleEntities = [ResponsibleEntity.from_data(entity) for entity in self.responsibleEntities]
+        self.responsibleEntities = [
+            ResponsibleEntity.from_data(entity) for entity in self.responsibleEntities
+        ]
 
     @classmethod
     def from_data(cls, data):
@@ -170,21 +180,6 @@ class AssetTenure:
     paymentReference: str | None
     type: str | None
     endOfTenureDate: str | None
-
-    @classmethod
-    def from_data(cls, data: dict | T):
-        return safe_object_from_dict(cls, data)
-
-
-@dataclass
-class AssetAddress:
-    addressLine1: str | None
-    addressLine2: str | None
-    addressLine3: str | None
-    addressLine4: str | None
-    postCode: str | None
-    postPreamble: str | None
-    uprn: str | None
 
     @classmethod
     def from_data(cls, data: dict | T):
