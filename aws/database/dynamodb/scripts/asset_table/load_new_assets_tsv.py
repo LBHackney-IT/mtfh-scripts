@@ -86,20 +86,7 @@ def replace_true_with_bool(d: dict) -> dict:
 
 
 def create_asset_dynamo(asset: dict) -> bool:
-    # 1. Check if asset already exists by assetId
-    assert asset["assetId"], "Asset must have an assetId"
-    existing_assets = get_by_secondary_index(
-        asset_table, "AssetId", "assetId", asset["assetId"]
-    )
-    if existing_assets:
-        # put item at that id instead
-        assert (
-            len(existing_assets) == 1
-        ), f"Existing {len(existing_assets)} assets found with assetId {asset['assetId']}"
-        existing_asset = existing_assets[0]
-        asset["id"] = existing_asset["id"]
-
-    # 2. Write directly to DynamoDB (strip Nones so they're absent, not DynamoDBNull)
+    # 1. Write directly to DynamoDB (id already resolved in generate_assets_json) (strip Nones so they're absent, not DynamoDBNull)
     stripped_asset = strip_none_values(asset)
     stripped_asset = replace_true_with_bool(stripped_asset)
     asset_table.put_item(Item=stripped_asset)
@@ -134,8 +121,8 @@ def create_sns_message(
     return {
         "id": entity_id,
         "eventType": event_type,
-        "sourceDomain": "mtfh-api",
-        "sourceSystem": "mtfh-api",
+        "sourceDomain": "new-properties-load-script-2026",
+        "sourceSystem": "new-properties-load-script-2026",
         "version": "v1",
         "correlationId": str(uuid.uuid4()),
         "dateTime": datetime.now(timezone.utc).isoformat(),
@@ -171,12 +158,23 @@ def emit_asset_created_event(asset: dict):
 def generate_assets_json():
     asset_csv_data = csv_to_dict_list(FILE_PATH, is_tsv=True)
 
-    # Step 1: Generate UUIDs for all assets keyed by prop_ref
-    asset_id_map: dict[str, str] = {
-        str(item["assetId"]): str(uuid.uuid4()) for item in asset_csv_data
-    }
-
-    asset_id_map["00078658"] = "e7cf983e-c112-15a6-8717-c4d736aaadbd"  # Existing estate
+    # Step 1: Generate UUIDs for all assets keyed by prop_ref, reusing existing IDs where found
+    asset_id_map: dict[str, str] = {}
+    for item in asset_csv_data:
+        asset_id = str(item["assetId"])
+        existing_assets = get_by_secondary_index(
+            table=asset_table,
+            index_name="AssetId",
+            secondary_key_name="assetId",
+            secondary_key_value=asset_id,
+        )
+        if existing_assets:
+            assert (
+                len(existing_assets) == 1
+            ), f"Existing {len(existing_assets)} assets found with assetId {asset_id}"
+            asset_id_map[asset_id] = existing_assets[0]["id"]
+        else:
+            asset_id_map[asset_id] = str(uuid.uuid4())
 
     # Build a lookup map of assetId -> row for resolving parent details
     asset_data_map: dict[str, dict] = {
@@ -184,6 +182,14 @@ def generate_assets_json():
     }
 
     # Step 2: Build assets, resolving parentAssetIds from prop_ref -> UUID
+    def get_address_line_1(item):
+        # strip postcode if duplicate
+        line_1 = item.get("assetAddress.addressLine1") or ""
+        postcode = item.get("assetAddress.postCode") or ""
+        if postcode in line_1:
+            line_1 = line_1.replace(postcode, "").strip(", ").strip()
+        return line_1 or None
+
     assets: list[Asset] = [
         Asset(
             id=asset_id_map[str(item["assetId"])],
@@ -193,7 +199,7 @@ def generate_assets_json():
                 {
                     "postCode": item.get("assetAddress.postCode") or "N1 7UQ",
                     "postPreamble": item.get("assetAddress.postPreamble") or None,
-                    "addressLine1": item.get("assetAddress.addressLine1") or None,
+                    "addressLine1": get_address_line_1(item),
                     "uprn": str(item.get("assetAddress.uprn")) or None,
                 }
             ),
@@ -228,27 +234,31 @@ def generate_assets_json():
                 or None,
                 "numberOfLifts": (
                     int(item["assetCharacteristics.numberOfLifts"])
-                    if item.get("assetCharacteristics.numberOfLifts")
+                    if item.get("assetCharacteristics.numberOfLifts") not in (None, "")
                     else None
                 ),
                 "numberOfBedrooms": (
                     int(item["assetCharacteristics.numberOfBedrooms"])
                     if item.get("assetCharacteristics.numberOfBedrooms")
+                    not in (None, "")
                     else None
                 ),
                 "numberOfSingleBeds": (
                     int(item["assetCharacteristics.numberOfSingleBeds"])
                     if item.get("assetCharacteristics.numberOfSingleBeds")
+                    not in (None, "")
                     else None
                 ),
                 "numberOfDoubleBeds": (
                     int(item["assetCharacteristics.numberOfDoubleBeds"])
                     if item.get("assetCharacteristics.numberOfDoubleBeds")
+                    not in (None, "")
                     else None
                 ),
                 "numberOfBedSpaces": (
                     int(item["assetCharacteristics.numberOfBedSpaces"])
                     if item.get("assetCharacteristics.numberOfBedSpaces")
+                    not in (None, "")
                     else None
                 ),
                 "hasRampAccess": item.get("assetCharacteristics.hasRampAccess") or None,
@@ -318,22 +328,22 @@ def check_assets_created(assets: list[Asset]):
 
 def main():
     # 1. Generate JSON from TSV for manual inspection
-    # generate_assets_json()
+    generate_assets_json()
 
     with open(ASSETS_LOAD_FILE, "r") as f:
         assets_dicts = json.load(f)
 
     # 2. Load assets into DynamoDB and emit events
     # assets_dicts = assets_dicts[1:10]  # Limit for testing
-    # with progress.Bar("Uploading assets", max=len(assets_dicts)) as progress_bar:
-    #     for asset in assets_dicts:
-    #         if create_asset_dynamo(asset):
-    #             with open("assets_loaded.txt", "a") as f:
-    #                 f.write(f"{asset['assetId']}\n")
-    #         progress_bar.next()
+    with progress.Bar("Uploading assets", max=len(assets_dicts)) as progress_bar:
+        for asset in assets_dicts:
+            if create_asset_dynamo(asset):
+                with open("assets_loaded.txt", "a") as f:
+                    f.write(f"{asset['assetId']}\n")
+            progress_bar.next()
 
     # 3. Check assets are valid in Asset API and Search API
-    check_assets_created([Asset(**asset_dict) for asset_dict in assets_dicts])
+    # check_assets_created([Asset(**asset_dict) for asset_dict in assets_dicts])
 
 
 if __name__ == "__main__":
