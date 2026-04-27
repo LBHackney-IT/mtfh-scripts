@@ -96,11 +96,11 @@ def strip_none_values(d: dict) -> dict:
     }
 
 
-def replace_true_with_bool(d: dict) -> dict:
+def convert_json_str_bool_to_python_bool(d: dict) -> dict:
     """Recursively replace string 'true' with boolean True, and 'false' with False."""
     return {
         k: (
-            replace_true_with_bool(v)
+            convert_json_str_bool_to_python_bool(v)
             if isinstance(v, dict)
             else (
                 (True if v.lower() == "true" else False if v.lower() == "false" else v)
@@ -115,7 +115,7 @@ def replace_true_with_bool(d: dict) -> dict:
 def create_asset_dynamo(asset: dict) -> bool:
     # 1. Write directly to DynamoDB (id already resolved in generate_assets_json) (strip Nones so they're absent, not DynamoDBNull)
     stripped_asset = strip_none_values(asset)
-    stripped_asset = replace_true_with_bool(stripped_asset)
+    stripped_asset = convert_json_str_bool_to_python_bool(stripped_asset)
     asset_table.put_item(Item=stripped_asset)
 
     # Fetch asset from asset API to verify schema validation
