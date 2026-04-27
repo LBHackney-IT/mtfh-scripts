@@ -40,12 +40,39 @@ path_search_url = f"/housing-tl/{STAGE.to_env_name()}/search-api-url"
 search_url = ssm_client.get_parameter(Name=path_search_url)["Parameter"].get("Value")
 assert search_url, "Search API URL not found in SSM"
 
+# Patches and Areas API
+path_panda_url = f"/housing-tl/{STAGE.to_env_name()}/patches-areas-api-url"
+panda_url = ssm_client.get_parameter(Name=path_panda_url)["Parameter"].get("Value")
+assert panda_url, "Patches and Areas API URL not found in SSM"
+
 # Hackney JWT for authenticating to APIs
 hackney_jwt = os.environ.get("HACKNEY_JWT")
 assert hackney_jwt, "HACKNEY_JWT environment variable not set"
 
 # Local Elasticsearch client for directly manipulating search index
 elasticsearch_client = LocalElasticsearchClient(index="assets", port=9200)
+
+
+def get_patch_by_name(name: str) -> dict:
+    response = requests.get(
+        f"{panda_url}/patch/all",
+        headers={"Authorization": f"Bearer {hackney_jwt}"},
+    )
+    response.raise_for_status()
+    all_patches = response.json()
+    matches = [patch for patch in all_patches if patch.get("name") == name]
+    assert (
+        len(matches) == 1
+    ), f"Expected exactly 1 patch with name {name}, found {len(matches)}"
+    patch_ = matches[0]
+    return patch_
+
+
+patch = get_patch_by_name("SD2")
+patch_id = patch.get("id")
+assert patch_id, "Patch ID not found for patch SD2"
+area_id = patch.get("parentId")
+assert area_id, "Area ID not found for patch SD2"
 
 
 def search_asset_by_asset_id(asset_id: str) -> list[dict]:
@@ -265,8 +292,8 @@ def generate_assets_json():
                 "heating": item.get("assetCharacteristics.heating"),
             },
             tenure=None,
-            areaId=None,
-            patchId=None,
+            areaId=area_id,
+            patchId=patch_id,
             rentGroup=None,
             isActive=None,
             rootAsset=(
