@@ -2,17 +2,19 @@ import csv
 import json
 
 
-def csv_to_dict_list(file_path: str) -> list[dict]:
+def csv_to_dict_list(file_path: str, is_tsv: bool = False) -> list[dict]:
     """
     Load a csv file into a list of dicts - one dict per row
     Assumes that the first row of the csv file is a header row
     Tries to decode any json into lists or dicts
     :param file_path: Path to csv file to load
+    :param is_tsv: If True, treat file as TSV (tab-separated values) instead of CSV
     :return: list of a dict for each row in the csv file
     """
     result_list = []
     with open(file_path) as file_obj:
-        reader = csv.DictReader(file_obj)
+        delimiter = "\t" if is_tsv else ","
+        reader = csv.DictReader(file_obj, delimiter=delimiter)
         for row in reader:
             result_list.append(dict(row))
 
@@ -26,7 +28,9 @@ def csv_to_dict_list(file_path: str) -> list[dict]:
     return result_list
 
 
-def dict_list_to_csv_rows(dict_list: list[dict], header_row: list[str]) -> list[list[str]]:
+def dict_list_to_csv_rows(
+    dict_list: list[dict], header_row: list[str]
+) -> list[list[str]]:
     csv_rows = []
     for i, dict_item in enumerate(dict_list):
         csv_row = []
@@ -35,8 +39,9 @@ def dict_list_to_csv_rows(dict_list: list[dict], header_row: list[str]) -> list[
         csv_rows.append(csv_row)
     return csv_rows
 
+
 def csv_to_array(file_path: str) -> list[str]:
-    with open(file_path, 'r') as csv_file:
+    with open(file_path, "r") as csv_file:
         csv_reader = csv.reader(csv_file)
         data_array = []
         for row in csv_reader:
