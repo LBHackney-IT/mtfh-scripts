@@ -13,14 +13,14 @@ LOCAL_PORT = 5432
 # For Parameter store URL Paths
 STAGE := staging
 # Set to AWSCLI Profile name
-PROFILE := ${STAGE}-apis
+PROFILE := housing-${STAGE}
 
 # -- Parameter Store paths --
 JUMP_BOX_INSTANCE_NAME_PATH:="platform-apis-jump-box-instance-name"
-POSTGRES_HOST_PATH:=" /uh-api/${STAGE}/postgres-hostname"
-POSTGRES_PORT_PATH:=" /uh-api/${STAGE}/postgres-port"
-POSTGRES_USERNAME_PATH:=" /uh-api/${STAGE}/postgres-username"
-POSTGRES_PASSWORD_PATH:=" /uh-api/${STAGE}/postgres-password"
+POSTGRES_HOST_PATH:=" /bonuscalc-api/${STAGE}/postgres-hostname"
+POSTGRES_PORT_PATH:=" /bonuscalc-api/${STAGE}/postgres-port"
+POSTGRES_USERNAME_PATH:=" /bonuscalc-api/${STAGE}/postgres-username"
+POSTGRES_PASSWORD_PATH:=" /bonuscalc-api/${STAGE}/postgres-password"
 
 # -- Parameters --
 # Get parameters from parameter store for the profile used
@@ -35,8 +35,7 @@ REMOTE_PASSWORD := $(shell aws ssm get-parameter --with-decryption --name ${POST
 
 # Use this command to connect to create a port forwarding session from localhost to the RDS instance via the jump-box
 # This will allow connecting to the database using a GUI tool like pgAdmin, or with local scripts
-# NOTE: On Windows you may need to run this command in a Git Bash terminal - run the `make port_forwarding_to_uh_db` and copy it from there
-port_forwarding_to_uh_db:
+port_forwarding_to_bonus_calc_db:
 	echo USERNAME: ${REMOTE_USERNAME}
 	echo PASSWORD: ${REMOTE_PASSWORD}
 

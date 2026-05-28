@@ -5,6 +5,9 @@
 # 	https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-install-plugin.html
 # On Windows you will need to run these commands using Git Bash, NOT Powershell / CMD
 
+# Force Make to use bash, even on Windows. 
+SHELL := bash
+
 # -- Configuration --
 # Local port to connect to on your machine
 LOCAL_PORT = 9200
@@ -24,8 +27,6 @@ ES_DOMAIN := $(shell aws ssm get-parameter --name ${ES_DOMAIN_PATH} --region "eu
 ES_DOMAIN := $(shell echo ${ES_DOMAIN} | sed 's/https:\/\///g')
 ES_PORT := 443
 
-DATABASE_PARAMS := '{"host":["${ES_DOMAIN}"], "portNumber":["${ES_PORT}"], "localPortNumber":["${LOCAL_PORT}"]}'
-
 # -- Commands --
 port_forwarding_to_housing_search:
 	echo "Connecting to ${ES_DOMAIN_PATH} on local port ${LOCAL_PORT}\n\n==="
@@ -34,7 +35,7 @@ port_forwarding_to_housing_search:
 		--region=eu-west-2  \
 		--profile=${PROFILE} \
 		--document AWS-StartPortForwardingSessionToRemoteHost \
-		--parameters ${DATABASE_PARAMS}
+		--parameters "host=${ES_DOMAIN},portNumber=${ES_PORT},localPortNumber=${LOCAL_PORT}"
 
 reset:
 	fuser -n tcp -k ${LOCAL_PORT} && echo "Port ${LOCAL_PORT} cleared" || echo "Port ${LOCAL_PORT} not in use"
