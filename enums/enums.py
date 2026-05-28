@@ -1,7 +1,6 @@
 from enum import Enum
 from typing import Literal, cast
 
-
 Environment = Literal["development", "staging", "production"]
 
 
@@ -9,9 +8,9 @@ class Stage(Enum):
     HOUSING_PRODUCTION = "housing-production"
     HOUSING_STAGING = "housing-staging"
     HOUSING_DEVELOPMENT = "housing-development"
-    BASE_DEVELOPMENT = "base-development"
-    BASE_STAGING = "base-staging"
-    BASE_PRODUCTION = "base-production"
+    DEVELOPMENT_APIS = "base-development"
+    STAGING_APIS = "base-staging"
+    PRODUCTION_APIS = "base-production"
     DISASTER_RECOVERY = "disaster-recovery"
 
     def to_env_name(self) -> Environment:

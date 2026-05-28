@@ -11,7 +11,7 @@ LOCAL_PORT = 5432
 # For Parameter store URL Paths
 STAGE := staging
 # Set to AWSCLI Profile name
-PROFILE := "base-${STAGE}"
+PROFILE := ${STAGE}-apis
 
 # -- Parameter Store paths --
 JUMP_BOX_INSTANCE_NAME_PATH:="platform-apis-jump-box-instance-name"
@@ -22,27 +22,14 @@ POSTGRES_PASSWORD_PATH:=" /uh-api/${STAGE}/postgres-password"
 
 # -- Parameters --
 # Get parameters from parameter store for the profile used
+_ := $(shell aws sts get-caller-identity --profile ${PROFILE} > /dev/null 2>&1 || aws sso login --profile ${PROFILE})
 INSTANCE_ID := $(shell aws ssm get-parameter --name ${JUMP_BOX_INSTANCE_NAME_PATH} --region "eu-west-2" --profile ${PROFILE} --query Parameter.Value --output text)
 REMOTE_HOST := $(shell aws ssm get-parameter --name ${POSTGRES_HOST_PATH} --region "eu-west-2" --profile ${PROFILE} --query Parameter.Value --output text)
 REMOTE_PORT := $(shell aws ssm get-parameter --name ${POSTGRES_PORT_PATH} --region "eu-west-2" --profile ${PROFILE} --query Parameter.Value --output text)
 REMOTE_USERNAME := $(shell aws ssm get-parameter --name ${POSTGRES_USERNAME_PATH} --region "eu-west-2" --profile ${PROFILE} --query Parameter.Value --output text)
 REMOTE_PASSWORD := $(shell aws ssm get-parameter --with-decryption --name ${POSTGRES_PASSWORD_PATH} --region "eu-west-2" --profile ${PROFILE} --query Parameter.Value --output text)
 
-DATABASE_PARAMS = '{"host":["${REMOTE_HOST}"], "portNumber":["${REMOTE_PORT}"], "localPortNumber":["${LOCAL_PORT}"]}'
-
 # -- Commands --
-
-# Use this command to login to the AWS SSO service
-# This will open a browser window to login to the AWS SSO service
-# This is required to use the ssm commands
-sso_login:
-	if (aws sts get-caller-identity --profile ${PROFILE})
-	then
-		echo "Session still valid"
-	else
-		echo "Session expired, logging in"
-		aws sso login --profile ${PROFILE}
-	fi
 
 # Use this command to connect to create a port forwarding session from localhost to the RDS instance via the jump-box
 # This will allow connecting to the database using a GUI tool like pgAdmin, or with local scripts
@@ -56,23 +43,4 @@ port_forwarding_to_uh_db:
 		--region eu-west-2 \
 		--profile ${PROFILE} \
 		--document-name AWS-StartPortForwardingSessionToRemoteHost \
-		--parameters ${DATABASE_PARAMS};
-
-# Use these commands to connect to the EC2 jump-box instance and then the RDS using SSM
-# This will allow running sql commands on the database in your local terminal
-connect_to_db_in_terminal:
-	printf "'--- v COMMAND v ---\
-			\n psql --host=${REMOTE_HOST} --port=${REMOTE_PORT} --username=${REMOTE_USERNAME} --password --dbname=uh_mirror\
-			\n PASSWORD: ${REMOTE_PASSWORD} \
-			\n--- ^ COMMAND ^ --- \n"
-
-	aws ssm start-session \
-		--target ${INSTANCE_ID} \
-		--region eu-west-2 \
-		--profile ${PROFILE};
-
-	# Once connected to the EC2 jump-box instance, this command will connect to the Postgres Database on the RDS instance
-	# You will be prompted for the password, see above
-
-reset:
-	fuser -n tcp -k ${LOCAL_PORT} && echo "Port ${LOCAL_PORT} cleared" || echo "Port ${LOCAL_PORT} not in use"
+		--parameters "host=${REMOTE_HOST},portNumber=${REMOTE_PORT},localPortNumber=${LOCAL_PORT}"

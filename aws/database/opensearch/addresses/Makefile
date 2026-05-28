@@ -11,31 +11,20 @@ LOCAL_PORT = 3333
 # For Parameter store URL Paths
 ENVIRONMENT = staging
 # Set to AWSCLI Profile name
-PROFILE = base-${ENVIRONMENT}
+PROFILE = ${ENVIRONMENT}-apis
 
 # -- Parameter Store paths --
 INSTANCE_ID_PATH := " /platform-apis-jump-box-instance-name"
 ES_DOMAIN_PATH := " /addresses-api/${ENVIRONMENT}/elasticsearch-domain"
 
 # -- Parameters --
+_ := $(shell aws sts get-caller-identity --profile ${PROFILE} > /dev/null 2>&1 || aws sso login --profile ${PROFILE})
 INSTANCE_ID := $(shell aws ssm get-parameter --name ${INSTANCE_ID_PATH} --region "eu-west-2" --profile ${PROFILE} --query Parameter.Value --output text)
 ES_DOMAIN := $(shell aws ssm get-parameter --name ${ES_DOMAIN_PATH} --region "eu-west-2" --profile ${PROFILE} --query Parameter.Value --output text)
 ES_DOMAIN := $(shell echo ${ES_DOMAIN} | sed 's/https:\/\///g')
 ES_PORT := 443
 
-DATABASE_PARAMS := '{"host":["${ES_DOMAIN}"], "portNumber":["${ES_PORT}"], "localPortNumber":["${LOCAL_PORT}"]}'
-
 # -- Commands --
-
-# Use this command to login to the AWS SSO service
-sso_login:
-	if (aws sts get-caller-identity --profile ${PROFILE})
-	then
-		echo "Session still valid"
-	else
-		echo "Session expired, logging in"
-		aws sso login --profile ${PROFILE}
-	fi
 
 port_forwarding_to_addresses_es:
 	echo "Connecting to ${ES_DOMAIN_PATH} on local port ${LOCAL_PORT}\n\n==="
@@ -44,7 +33,7 @@ port_forwarding_to_addresses_es:
 		--region=eu-west-2  \
 		--profile=${PROFILE} \
 		--document AWS-StartPortForwardingSessionToRemoteHost \
-		--parameters ${DATABASE_PARAMS}
+		--parameters "host=${ES_DOMAIN},portNumber=${ES_PORT},localPortNumber=${LOCAL_PORT}"
 
 kibana:
 	curl -k https://127.0.0.1:${LOCAL_PORT}
