@@ -8,9 +8,9 @@ class Stage(Enum):
     HOUSING_PRODUCTION = "housing-production"
     HOUSING_STAGING = "housing-staging"
     HOUSING_DEVELOPMENT = "housing-development"
-    DEVELOPMENT_APIS = "base-development"
-    STAGING_APIS = "base-staging"
-    PRODUCTION_APIS = "base-production"
+    DEVELOPMENT_APIS = "development-apis"
+    STAGING_APIS = "staging-apis"
+    PRODUCTION_APIS = "production-apis"
     DISASTER_RECOVERY = "disaster-recovery"
 
     def to_env_name(self) -> Environment:
