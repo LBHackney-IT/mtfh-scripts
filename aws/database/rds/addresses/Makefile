@@ -4,6 +4,7 @@
 # Requires AWS Session Manager Plugin to be installed:
 # 	https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-install-plugin.html
 # On Windows you will need to run these commands using Git Bash, NOT Powershell / CMD
+
 # Force Make to use bash, even on Windows. 
 SHELL := bash
 
