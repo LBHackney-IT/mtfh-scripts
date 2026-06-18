@@ -18,7 +18,7 @@ def process_scan(table, scan, next_person_ref):
 def main():
     table = get_dynamodb_table(
         table_name="Persons",
-        stage=Stage.HOUSING_DEVELOPMENT
+        stage=Stage.HOUSING_STAGING
     )
 
     next_person_ref = 70000000
