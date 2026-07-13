@@ -16,9 +16,8 @@ from aws.database.opensearch.client.elasticsearch_client import LocalElasticsear
 from aws.utils.csv_to_dict_list import csv_to_dict_list
 from enums.enums import Stage
 
-
-STAGE = Stage.HOUSING_DEVELOPMENT
-FILE_PATH = "data/new_builds_hierarchy.tsv"
+STAGE = Stage.HOUSING_PRODUCTION
+FILE_PATH = "data/assets_to_load.tsv"
 ASSETS_LOAD_FILE = "assets_to_load.json"
 
 
@@ -40,39 +39,12 @@ path_search_url = f"/housing-tl/{STAGE.to_env_name()}/search-api-url"
 search_url = ssm_client.get_parameter(Name=path_search_url)["Parameter"].get("Value")
 assert search_url, "Search API URL not found in SSM"
 
-# Patches and Areas API
-path_panda_url = f"/housing-tl/{STAGE.to_env_name()}/patches-areas-api-url"
-panda_url = ssm_client.get_parameter(Name=path_panda_url)["Parameter"].get("Value")
-assert panda_url, "Patches and Areas API URL not found in SSM"
-
 # Hackney JWT for authenticating to APIs
 hackney_jwt = os.environ.get("HACKNEY_JWT")
 assert hackney_jwt, "HACKNEY_JWT environment variable not set"
 
 # Local Elasticsearch client for directly manipulating search index
 elasticsearch_client = LocalElasticsearchClient(index="assets", port=9200)
-
-
-def get_patch_by_name(name: str) -> dict:
-    response = requests.get(
-        f"{panda_url}/patch/all",
-        headers={"Authorization": f"Bearer {hackney_jwt}"},
-    )
-    response.raise_for_status()
-    all_patches = response.json()
-    matches = [patch for patch in all_patches if patch.get("name") == name]
-    assert (
-        len(matches) == 1
-    ), f"Expected exactly 1 patch with name {name}, found {len(matches)}"
-    patch_ = matches[0]
-    return patch_
-
-
-patch = get_patch_by_name("SD2")
-patch_id = patch.get("id")
-assert patch_id, "Patch ID not found for patch SD2"
-area_id = patch.get("parentId")
-assert area_id, "Area ID not found for patch SD2"
 
 
 def search_asset_by_asset_id(asset_id: str) -> list[dict]:
@@ -182,141 +154,109 @@ def emit_asset_created_event(asset: dict):
     )
 
 
-def generate_assets_json():
+def generate_assets_json() -> list[dict]:
     asset_csv_data = csv_to_dict_list(FILE_PATH, is_tsv=True)
 
-    # Step 1: Generate UUIDs for all assets keyed by prop_ref, reusing existing IDs where found
+    # Step 1: Resolve UUIDs — reuse existing IDs if asset already in DynamoDB
     asset_id_map: dict[str, str] = {}
     for item in asset_csv_data:
-        asset_id = str(item["assetId"])
+        prop_ref = str(item["Prop_Ref"])
         existing_assets = get_by_secondary_index(
             table=asset_table,
             index_name="AssetId",
             secondary_key_name="assetId",
-            secondary_key_value=asset_id,
+            secondary_key_value=prop_ref,
         )
         if existing_assets:
             assert (
                 len(existing_assets) == 1
-            ), f"Existing {len(existing_assets)} assets found with assetId {asset_id}"
-            asset_id_map[asset_id] = existing_assets[0]["id"]
+            ), f"Found {len(existing_assets)} assets with assetId {prop_ref}"
+            asset_id_map[prop_ref] = existing_assets[0]["id"]
         else:
-            asset_id_map[asset_id] = str(uuid.uuid4())
+            asset_id_map[prop_ref] = str(uuid.uuid4())
 
-    # Build a lookup map of assetId -> row for resolving parent details
-    asset_data_map: dict[str, dict] = {
-        str(item["assetId"]): item for item in asset_csv_data
-    }
+    def get_floor_number(floor_str: str | None) -> str | None:
+        """Parse floor description like '1st floor', 'Gnd floor' into '1', '0'."""
+        if not floor_str:
+            return None
+        floor_str = floor_str.strip().lower()
+        if floor_str.startswith("gnd") or floor_str.startswith("ground"):
+            return "0"
+        digits = ""
+        for ch in floor_str:
+            if ch.isdigit():
+                digits += ch
+            elif digits:
+                break
+        return digits or None
 
-    # Step 2: Build assets, resolving parentAssetIds from prop_ref -> UUID
-    def get_address_line_1(item):
-        # strip postcode if duplicate
-        line_1 = item.get("assetAddress.addressLine1") or ""
-        postcode = item.get("assetAddress.postCode") or ""
-        if postcode in line_1:
-            line_1 = line_1.replace(postcode, "").strip(", ").strip()
-        return line_1 or None
+    def get_beds(beds_str: int | None) -> int | None:
+        if beds_str is None:
+            return None
+        try:
+            return int(beds_str)
+        except (ValueError, TypeError):
+            return None
 
+    # Step 2: Build assets from TSV rows
+    # Column mapping from TSV:
+    #   Prop_Ref        -> assetId
+    #   Add1            -> addressLine1
+    #   Add2            -> addressLine2 (locality/estate)
+    #   Add3            -> addressLine4 (town: "London")
+    #   Estate Address  -> addressLine3
+    #   Post Code       -> postCode
+    #   LLPG_Reference  -> uprn
+    #   Beds            -> numberOfBedrooms
+    #   Floor           -> floorNumber
+    #   Occ_Status_Desc -> isActive (0 for void)
     assets: list[Asset] = [
         Asset(
-            id=asset_id_map[str(item["assetId"])],
-            assetId=str(item["assetId"]),
-            assetType=item.get("assetType"),
+            id=asset_id_map[str(item["Prop_Ref"])],
+            assetId=str(item["Prop_Ref"]),
+            assetType="Dwelling",
             assetAddress=AssetAddress.from_data(
                 {
-                    "postCode": item.get("assetAddress.postCode") or "N1 7UQ",
-                    "postPreamble": item.get("assetAddress.postPreamble") or None,
-                    "addressLine1": get_address_line_1(item),
-                    "uprn": str(item.get("assetAddress.uprn")) or None,
+                    "addressLine1": item.get("Add1") or None,
+                    "addressLine2": item.get("Add2") or None,
+                    "addressLine3": item.get("Add3") or None,
+                    "addressLine4": None,
+                    "postCode": item.get("Post Code") or None,
+                    "postPreamble": None,
+                    "uprn": str(item.get("LLPG_Reference")) or None,
                 }
             ),
             assetLocation={
-                "floorNumber": item.get("assetLocation.floorNumber") or None,
-                "totalBlockFloors": item.get("assetLocation.totalBlockFloors") or None,
-                "parentAssets": (
-                    [
-                        {
-                            "id": asset_id_map.get(
-                                str(item["parentAssetIds (need to convert to UUID)"])
-                            ),
-                            "type": asset_data_map.get(
-                                str(item["parentAssetIds (need to convert to UUID)"]),
-                                {},
-                            ).get("assetType"),
-                            "name": asset_data_map.get(
-                                str(item["parentAssetIds (need to convert to UUID)"]),
-                                {},
-                            ).get("assetAddress.addressLine1"),
-                        }
-                    ]
-                    if item.get("parentAssetIds (need to convert to UUID)")
-                    else []
-                ),
+                "floorNo": get_floor_number(item.get("Floor")),
+                "totalBlockFloors": None,
+                "parentAssets": [],
             },
             assetCharacteristics={
-                "yearConstructed": str(
-                    item.get("assetCharacteristics.yearConstructed")
-                ),
-                "numberOfFloors": item.get("assetCharacteristics.numberOfFloors")
-                or None,
-                "numberOfLifts": (
-                    int(item["assetCharacteristics.numberOfLifts"])
-                    if item.get("assetCharacteristics.numberOfLifts") not in (None, "")
-                    else None
-                ),
-                "numberOfBedrooms": (
-                    int(item["assetCharacteristics.numberOfBedrooms"])
-                    if item.get("assetCharacteristics.numberOfBedrooms")
-                    not in (None, "")
-                    else None
-                ),
-                "numberOfSingleBeds": (
-                    int(item["assetCharacteristics.numberOfSingleBeds"])
-                    if item.get("assetCharacteristics.numberOfSingleBeds")
-                    not in (None, "")
-                    else None
-                ),
-                "numberOfDoubleBeds": (
-                    int(item["assetCharacteristics.numberOfDoubleBeds"])
-                    if item.get("assetCharacteristics.numberOfDoubleBeds")
-                    not in (None, "")
-                    else None
-                ),
-                "numberOfBedSpaces": (
-                    int(item["assetCharacteristics.numberOfBedSpaces"])
-                    if item.get("assetCharacteristics.numberOfBedSpaces")
-                    not in (None, "")
-                    else None
-                ),
-                "hasRampAccess": item.get("assetCharacteristics.hasRampAccess") or None,
-                "heating": item.get("assetCharacteristics.heating"),
+                "yearConstructed": "",
+                "numberOfFloors": None,
+                "numberOfLifts": None,
+                "numberOfBedrooms": get_beds(item.get("Beds")),
+                "numberOfSingleBeds": None,
+                "numberOfDoubleBeds": None,
+                "numberOfBedSpaces": None,
+                "hasRampAccess": None,
+                "heating": "",
             },
             tenure=None,
-            areaId=area_id,
-            patchId=patch_id,
-            rentGroup=None,
+            areaId=None,
+            patchId=None,
+            rentGroup="HRA",
             isActive=None,
-            rootAsset=(
-                asset_id_map["00078658"] if item.get("assetType") != "Block" else None
-            ),
-            parentAssetIds=(
-                asset_id_map.get(str(item["parentAssetIds (need to convert to UUID)"]))
-                if item.get("parentAssetIds (need to convert to UUID)")
-                else None
-            ),
-            assetManagement={"owner": "LBH"},
+            rootAsset="ROOT",
+            parentAssetIds=None,
+            assetManagement={"owner": "LBH", "isCouncilProperty": True},
         )
         for item in asset_csv_data
     ]
 
     assets_dicts = [asdict(asset) for asset in assets]
 
-    for asset_dict in assets_dicts:
-        if asset_dict["rootAsset"] is None:
-            asset_dict["rootAsset"] = "ROOT"
-
-    with open(ASSETS_LOAD_FILE, "w") as f:
-        json.dump(assets_dicts, f, indent=4)
+    return assets_dicts
 
 
 def check_assets_created(assets: list[Asset]):
@@ -324,7 +264,7 @@ def check_assets_created(assets: list[Asset]):
         for asset in assets:
             # Asset API
             response = requests.get(
-                f"{asset_url}/assets/{asset.id}",
+                f"{asset_url}/assets/assetId/{asset.assetId}",
                 headers={"Authorization": f"Bearer {hackney_jwt}"},
             )
             if response.status_code != 200:
@@ -355,13 +295,15 @@ def check_assets_created(assets: list[Asset]):
 
 def main():
     # 1. Generate JSON from TSV for manual inspection
-    generate_assets_json()
+    assets_dicts_o = generate_assets_json()
 
+    with open(ASSETS_LOAD_FILE, "w") as f:
+        json.dump(assets_dicts_o, f, indent=2)
     with open(ASSETS_LOAD_FILE, "r") as f:
         assets_dicts = json.load(f)
 
     # 2. Load assets into DynamoDB and emit events
-    # assets_dicts = assets_dicts[1:10]  # Limit for testing
+    # assets_dicts = assets_dicts[0:1]  # Limit for testing
     with progress.Bar("Uploading assets", max=len(assets_dicts)) as progress_bar:
         for asset in assets_dicts:
             if create_asset_dynamo(asset):
