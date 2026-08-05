@@ -156,11 +156,12 @@ def emit_asset_created_event(asset: dict):
 
 def generate_assets_json() -> list[dict]:
     asset_csv_data = csv_to_dict_list(FILE_PATH, is_tsv=True)
+    asset_csv_data = [row for row in asset_csv_data if row.get("Property Reference")]
 
     # Step 1: Resolve UUIDs — reuse existing IDs if asset already in DynamoDB
     asset_id_map: dict[str, str] = {}
     for item in asset_csv_data:
-        prop_ref = str(item["Prop_Ref"])
+        prop_ref = str(item["Property Reference"])
         existing_assets = get_by_secondary_index(
             table=asset_table,
             index_name="AssetId",
@@ -199,35 +200,38 @@ def generate_assets_json() -> list[dict]:
             return None
 
     # Step 2: Build assets from TSV rows
-    # Column mapping from TSV:
-    #   Prop_Ref        -> assetId
-    #   Add1            -> addressLine1
-    #   Add2            -> addressLine2 (locality/estate)
-    #   Add3            -> addressLine4 (town: "London")
-    #   Estate Address  -> addressLine3
-    #   Post Code       -> postCode
-    #   LLPG_Reference  -> uprn
-    #   Beds            -> numberOfBedrooms
-    #   Floor           -> floorNumber
-    #   Occ_Status_Desc -> isActive (0 for void)
+
+    column_maps = {
+        "assetId": "Property Reference",
+        "addressLine1": "Address Line 1",
+        "addressLine2": "Address Line 2",
+        "addressLine3": "Estate Address",
+        "addressLine4": "Address Line 4",
+        "postCode": "Postcode",
+        "postPreamble": None,
+        "uprn": "UPRN",
+        "floorNo": "Floor",
+        "numberOfBedrooms": "Number of Bedrooms",
+    }
+
     assets: list[Asset] = [
         Asset(
-            id=asset_id_map[str(item["Prop_Ref"])],
-            assetId=str(item["Prop_Ref"]),
+            id=asset_id_map[str(item["Property Reference"])],
+            assetId=str(item["Property Reference"]),
             assetType="Dwelling",
             assetAddress=AssetAddress.from_data(
                 {
-                    "addressLine1": item.get("Add1") or None,
-                    "addressLine2": item.get("Add2") or None,
-                    "addressLine3": item.get("Add3") or None,
-                    "addressLine4": None,
-                    "postCode": item.get("Post Code") or None,
+                    "addressLine1": item.get(column_maps["addressLine1"]) or None,
+                    "addressLine2": item.get(column_maps["addressLine2"]) or None,
+                    "addressLine3": item.get(column_maps["addressLine3"]) or None,
+                    "addressLine4": item.get(column_maps["addressLine4"]) or None,
+                    "postCode": item.get(column_maps["postCode"]) or None,
                     "postPreamble": None,
-                    "uprn": str(item.get("LLPG_Reference")) or None,
+                    "uprn": str(item.get(column_maps["uprn"])) or None,
                 }
             ),
             assetLocation={
-                "floorNo": get_floor_number(item.get("Floor")),
+                "floorNo": get_floor_number(item.get(column_maps["floorNo"])),
                 "totalBlockFloors": None,
                 "parentAssets": [],
             },
@@ -235,7 +239,7 @@ def generate_assets_json() -> list[dict]:
                 "yearConstructed": "",
                 "numberOfFloors": None,
                 "numberOfLifts": None,
-                "numberOfBedrooms": get_beds(item.get("Beds")),
+                "numberOfBedrooms": get_beds(item.get(column_maps["numberOfBedrooms"])),
                 "numberOfSingleBeds": None,
                 "numberOfDoubleBeds": None,
                 "numberOfBedSpaces": None,
@@ -293,6 +297,48 @@ def check_assets_created(assets: list[Asset]):
             pbar.next()
 
 
+def create_asset_search_result_from_asset_id(asset_id: str) -> dict:
+    """Fetch an asset from the Asset API by its asset ID (property reference),
+    convert to the asset search result format, and index it in Elasticsearch.
+
+    Returns the Elasticsearch document body that was indexed.
+    """
+    # Fetch asset from Asset API by assetId
+    response = requests.get(
+        f"{asset_url}/assets/assetId/{asset_id}",
+        headers={"Authorization": f"Bearer {hackney_jwt}"},
+    )
+    response.raise_for_status()
+    asset = response.json()
+
+    # Remove existing search results for this asset ID if any
+    matching_assets = search_asset_by_asset_id(asset_id)
+    for match in matching_assets:
+        elasticsearch_client.delete(doc_id=match["id"])
+
+    # Strip None values so Elasticsearch doesn't store nulls unnecessarily
+    stripped_asset = strip_none_values(asset)
+    stripped_asset = convert_json_str_bool_to_python_bool(stripped_asset)
+
+    # Index the asset into the Elasticsearch assets index
+    elasticsearch_client.index(doc_id=stripped_asset["id"], body=stripped_asset)
+
+    return stripped_asset
+
+
+def create_search_results_for_all_assets():
+    """Fetch all assets from the Asset API and index them in Elasticsearch."""
+    with open(ASSETS_LOAD_FILE, "r") as f:
+        assets_dicts = json.load(f)
+
+    with progress.Bar(
+        "Creating search results for assets", max=len(assets_dicts)
+    ) as pbar:
+        for asset in assets_dicts:
+            create_asset_search_result_from_asset_id(asset["assetId"])
+            pbar.next()
+
+
 def main():
     # 1. Generate JSON from TSV for manual inspection
     assets_dicts_o = generate_assets_json()
@@ -316,4 +362,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    create_search_results_for_all_assets()
