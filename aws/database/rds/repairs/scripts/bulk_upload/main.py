@@ -33,6 +33,7 @@ class Config:
 session = get_session_for_stage(Config.STAGE)
 asset_dynamodb_table = get_dynamodb_table("Assets", Config.STAGE)
 ssm_client: SSMClient = session.client("ssm")
+RepairsSession = session_for_repairs(Config.STAGE, expire_on_commit=True, local_port=Config.DB_LOCAL_PORT)
 
 # Hackney JWT for authenticating to the API
 hackney_jwt = os.environ.get("HACKNEY_JWT_WORK_ORDER")
@@ -48,7 +49,6 @@ assert repairs_api_key, "repairs-service-api-key variable not set"
 
 http = requests.Session() 
 http.headers.update({"Authorization": hackney_jwt, "x-hackney-user": hackney_jwt, "x-api-key": repairs_api_key})
-
 
 def create_work_order_via_api(request_body: WorkOrderPayload) -> bool:
     """POST a work order to the Work Order API."""
@@ -185,9 +185,6 @@ def process_work_order(
     return property_reference, success
 
 def main():
-    # Fetch data from RepairsDB
-    RepairsSession = session_for_repairs(Config.STAGE, expire_on_commit=True, local_port=Config.DB_LOCAL_PORT)
-
     # Temporary hardcoded values
     corporate_subjective_code="200045"
     external_cost_code="H2555"
@@ -197,6 +194,7 @@ def main():
     contractor_reference = "RG2"
     description = "Carry out EICR including Smoke Alarms and remedials works as per agreed basket rate and upload to SAFe"
 
+    # Fetch data from RepairsDB
     with RepairsSession() as db_session:
         budget_code = get_budget_code(db_session, corporate_subjective_code, external_cost_code)
         priority = get_sor_priority(db_session, priority_code)
