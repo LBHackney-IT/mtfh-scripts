@@ -59,39 +59,6 @@ def create_work_order_via_api(request_body: WorkOrderPayload) -> bool:
         print(f"Error response prop_ref:{request_body['site']['property'][0]['propertyReference']} body: {response.text}")
         return False
 
-def build_work_order(
-    descriptionOfWork: str,
-    priority: PriorityDict,
-    trade: TradeDict,
-    sorCodes: list[RateScheduleItemDict],
-    property: PropertyDict,
-    assignedToPrimary: AssignedToPrimaryDict,
-    customer: CustomerDict,
-    budgetCode: int
-
-) -> WorkOrderPayload:
-    return {
-        "reference": [{"id": str(uuid.uuid4())}],
-        "descriptionOfWork": descriptionOfWork,
-        "priority": priority,
-        "workClass": {"workClassCode": 0},
-        "workElement": [
-            {"rateScheduleItem": [item], "trade": [trade]}
-            for item in sorCodes
-        ],
-        "site": {
-            "property": [property]
-        },
-        "instructedBy": {"name": "Hackney Housing"},
-        "assignedToPrimary": assignedToPrimary,
-        "customer": customer,
-        "budgetCode": {
-            "id": budgetCode
-        },
-        "multiTradeWorkOrder": False,
-        "isAwaabsDampAndMouldRepair": False,
-    }
-
 def get_asset_by_prop_ref(property_reference: str):
     return get_by_secondary_index(asset_dynamodb_table, "AssetId", "assetId", property_reference)
 
@@ -171,35 +138,48 @@ def main():
             property = get_asset_by_prop_ref(property_reference)
 
             # Define request body
-            request_body = build_work_order(
-                descriptionOfWork="Carry out EICR including Smoke Alarms and remedials works as per agreed basket rate and upload to SAFe",
-                priority={
+            sorCodes : list[RateScheduleItemDict] =[{
+                "customCode": sor_code.code,
+                "customName": sor_code.short_description,
+                "quantity": {"amount": [1]},
+            }]
+
+            request_body: WorkOrderPayload = {
+                "reference": [{"id": str(uuid.uuid4())}],
+                "descriptionOfWork": "Carry out EICR including Smoke Alarms and remedials works as per agreed basket rate and upload to SAFe",
+                "priority": {
                     "priorityCode": priority.priority_code, 
                     "priorityDescription": priority.description,
                     "numberOfDays": int(priority.days_to_complete)  # type: ignore[arg-type]
                 },
-                trade={
-                    "code": "SP", 
-                    "customCode": trade.code, 
-                    "customName": trade.name},
-                sorCodes=[{
-                    "customCode": sor_code.code,
-                    "customName": sor_code.short_description,
-                    "quantity": {"amount": [1]},
-                }],
-                property={
-                    "propertyReference": property_reference,
-                    "address": {
-                        "addressLine": [property[0]['assetAddress']['addressLine1']],
-                        "postalCode": property[0]['assetAddress']['postCode'],
-                    },
-                    "reference": [{"id": property_reference}],
+                "workClass": {"workClassCode": 0},
+                "workElement": [
+                    {
+                        "rateScheduleItem": [item], 
+                        "trade": [{
+                            "code": "SP", 
+                            "customCode": trade.code, 
+                            "customName": trade.name
+                        }]
+                    }
+                    for item in sorCodes
+                ],
+                "site": {
+                    "property": [{
+                        "propertyReference": property_reference,
+                        "address": {
+                            "addressLine": [property[0]['assetAddress']['addressLine1']],
+                            "postalCode": property[0]['assetAddress']['postCode'],
+                        },
+                        "reference": [{"id": property_reference}],
+                    }]
                 },
-                assignedToPrimary={
+                "instructedBy": {"name": "Hackney Housing"},
+                "assignedToPrimary": {
                     "name": contractor.name,
                     "organization": {"reference": [{"id": contractor.reference}]},
                 },
-                customer={
+                "customer": {
                     "name": "n/a",
                     "person": {
                         "name": {"full": "n/a"},
@@ -211,8 +191,12 @@ def main():
                         ],
                     },
                 },
-                budgetCode=budget_code.id
-            )
+                "budgetCode": {
+                    "id": budget_code.id
+                },
+                "multiTradeWorkOrder": False,
+                "isAwaabsDampAndMouldRepair": False,
+            }
 
             create_work_order_via_api(request_body)
             progress_bar.next()
