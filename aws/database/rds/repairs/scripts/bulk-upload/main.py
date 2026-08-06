@@ -125,6 +125,17 @@ class WorkOrderPayload(TypedDict):
     isAwaabsDampAndMouldRepair: bool
     budgetCode: BudgetCodeDict
 
+class Priority(str, Enum):
+    IMMEDIATE = "[I] IMMEDIATE"
+    EMERGENCY = "[E] EMERGENCY"
+    URGENT = "[U] URGENT"
+    NORMAL = "[N] NORMAL"
+    PLANNED_MAINTENANCE = "[P] PLANNED MAINT"
+    VOIDS_MINOR = "[V15] Voids minor"
+    VOIDS_MAJOR = "[V30] Voids major"
+    LEGAL_DISREPAIR = "[L] LEGAL DISREP"
+    LEGAL_DISREPAIR_EPA_20_DAYS = "[L2] LD EPA 20 DAYS"
+    MINOR_ADAPTATION = "[AD20] Minor Adaptation"
 
 # @dataclass
 # class Config:
@@ -150,19 +161,14 @@ path_repairs_api_key = f"/repairs-hub/{STAGE.to_env_name()}/repairs-service-api-
 repairs_api_key = ssm_client.get_parameter(Name=path_repairs_api_key)["Parameter"].get("Value")
 assert repairs_api_key, "repairs-service-api-key variable not set"
 
+http = requests.Session() 
+http.headers.update({"Authorization": hackney_jwt, "x-hackney-user": hackney_jwt, "x-api-key": repairs_api_key})
 
-def create_work_order_via_api(request_body: WorkOrderPayload) -> bool:
+
+def create_work_order_via_api(request_body: WorkOrderPayload):
     """POST a work order to the Work Order API."""
 
-    response = requests.post(
-        f"{repairs_api_url}/workOrders/schedule",
-        json=request_body,
-        headers={
-            "Authorization": hackney_jwt,
-            "x-hackney-user": hackney_jwt,
-            "x-api-key": repairs_api_key
-            },
-    )
+    response = http.post(f"{repairs_api_url}/workOrders/schedule", json=request_body, timeout=30)
 
     try:
         response.raise_for_status()
@@ -173,7 +179,6 @@ def create_work_order_via_api(request_body: WorkOrderPayload) -> bool:
     work_order = response.json()
 
     print(f"WorkOrder {work_order['id']} created with status {response.status_code}")
-    return True
 
 
 def build_work_order(
@@ -233,18 +238,6 @@ def get_budget_code(session: Session, corporate_subjective_code: str, external_c
         label="budget codes"
     )
 
-class Priority(str, Enum):
-    IMMEDIATE = "[I] IMMEDIATE"
-    EMERGENCY = "[E] EMERGENCY"
-    URGENT = "[U] URGENT"
-    NORMAL = "[N] NORMAL"
-    PLANNED_MAINTENANCE = "[P] PLANNED MAINT"
-    VOIDS_MINOR = "[V15] Voids minor"
-    VOIDS_MAJOR = "[V30] Voids major"
-    LEGAL_DISREPAIR = "[L] LEGAL DISREP"
-    LEGAL_DISREPAIR_EPA_20_DAYS = "[L2] LD EPA 20 DAYS"
-    MINOR_ADAPTATION = "[AD20] Minor Adaptation"
-
 def get_sor_priority(session: Session, priority: Priority) -> SORPriority:
     return fetch_one(
         session, 
@@ -262,12 +255,12 @@ def get_contractor(session: Session, reference: str) -> Contractor:
     return fetch_one(session, select(Contractor).where(Contractor.reference == reference), label="contractors")
         
 def main():
-    # Fetch property from asset API
+    # Fetch property from asset DB
     property_reference = "00023402"
     property = get_asset_by_prop_ref(property_reference)
 
     # Fetch data from RepairsDB
-    RepairsSession = session_for_repairs(STAGE, expire_on_commit=False, local_port=6005)
+    RepairsSession = session_for_repairs(STAGE, expire_on_commit=True, local_port=6005)
 
     with RepairsSession() as db_session:
         budget_code = get_budget_code(db_session, corporate_subjective_code="200045", external_cost_code="H2555")
@@ -277,27 +270,22 @@ def main():
         contractor = get_contractor(db_session, "RG2")
 
     # Define request body
-
     request_body = build_work_order(
         descriptionOfWork="Carry out EICR including Smoke Alarms and remedials works as per agreed basket rate and upload to SAFe",
-        # ToDo - Fetch priority details from the db
-        priority=PriorityDict({
+        priority={
             "priorityCode": priority.priority_code, 
             "priorityDescription": priority.description,
-            "numberOfDays": int(priority.priority_code)  # type: ignore[arg-type]
-        }),
-        trade=TradeDict({
+            "numberOfDays": int(priority.days_to_complete)  # type: ignore[arg-type]
+        },
+        trade={
             "code": "SP", 
             "customCode": trade.code, 
-            "customName": trade.name}),
-        # ToDo - Fetch SOR code details from the db
-        sorCodes=[
-            RateScheduleItemDict({
-                "customCode": sor_code.code,
-                "customName": sor_code.short_description,
-                "quantity": {"amount": [1]},
-            })
-        ],
+            "customName": trade.name},
+        sorCodes=[{
+            "customCode": sor_code.code,
+            "customName": sor_code.short_description,
+            "quantity": {"amount": [1]},
+        }],
         property={
             "propertyReference": property_reference,
             "address": {
@@ -306,10 +294,10 @@ def main():
             },
             "reference": [{"id": property_reference}],
         },
-        assignedToPrimary=AssignedToPrimaryDict({
+        assignedToPrimary={
             "name": contractor.name,
             "organization": {"reference": [{"id": contractor.reference}]},
-        }),
+        },
         customer={
             "name": "n/a",
             "person": {
@@ -326,7 +314,6 @@ def main():
     )
 
     create_work_order_via_api(request_body)
-
 
 if __name__ == "__main__":
     main()
