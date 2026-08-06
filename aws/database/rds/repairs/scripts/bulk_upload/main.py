@@ -28,6 +28,7 @@ class Config:
     DB_LOCAL_PORT = 6005
 
 session = get_session_for_stage(Config.STAGE)
+asset_dynamodb_table = get_dynamodb_table("Assets", Config.STAGE)
 ssm_client: SSMClient = session.client("ssm")
 
 # Hackney JWT for authenticating to the API
@@ -46,21 +47,17 @@ http = requests.Session()
 http.headers.update({"Authorization": hackney_jwt, "x-hackney-user": hackney_jwt, "x-api-key": repairs_api_key})
 
 
-def create_work_order_via_api(request_body: WorkOrderPayload):
+def create_work_order_via_api(request_body: WorkOrderPayload) -> bool:
     """POST a work order to the Work Order API."""
 
     response = http.post(f"{repairs_api_url}/workOrders/schedule", json=request_body, timeout=30)
 
     try:
         response.raise_for_status()
+        return True
     except requests.HTTPError:
-        print(f"Error response body: {response.text}")
-        raise
-
-    work_order = response.json()
-
-    print(f"WorkOrder {work_order['id']} created with status {response.status_code}")
-
+        print(f"Error response prop_ref:{request_body['site']['property'][0]['propertyReference']} body: {response.text}")
+        return False
 
 def build_work_order(
     descriptionOfWork: str,
@@ -96,8 +93,7 @@ def build_work_order(
     }
 
 def get_asset_by_prop_ref(property_reference: str):
-    table = get_dynamodb_table("Assets", Config.STAGE)
-    return get_by_secondary_index(table, "AssetId", "assetId", property_reference)
+    return get_by_secondary_index(asset_dynamodb_table, "AssetId", "assetId", property_reference)
 
 T = TypeVar("T")
 
