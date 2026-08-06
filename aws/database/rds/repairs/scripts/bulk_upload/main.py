@@ -21,11 +21,14 @@ from sqlalchemy.exc import NoResultFound, MultipleResultsFound
 from aws.database.rds.repairs.scripts.bulk_upload.types import *
 from dataclasses import dataclass
 import progress.bar as progress
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from threading import Lock
 
 @dataclass
 class Config:
     STAGE = Stage.HOUSING_DEVELOPMENT 
     DB_LOCAL_PORT = 6005
+    THREAD_POOL_COUNT = 50
 
 session = get_session_for_stage(Config.STAGE)
 asset_dynamodb_table = get_dynamodb_table("Assets", Config.STAGE)
@@ -98,108 +101,142 @@ def get_sor_code(session: Session, code: str) -> SorCode:
 def get_contractor(session: Session, reference: str) -> Contractor:
     return fetch_one(session, select(Contractor).where(Contractor.reference == reference), label="contractors")
         
+
+def process_work_order(
+    property_reference: str, 
+    budget_code: BudgetCode,
+    priority: SORPriority,
+    trade: Trade,
+    sor_code: SorCode,
+    contractor: Contractor,  
+    description: str
+):
+    # Hardcoded values (unlikely to change)
+    customer_name = "n/a"
+    customer_number = "0000"
+    instructed_by = "Hackney Housing" # Default hackney TMO value
+
+    # Fetch property from asset DB
+    property = get_asset_by_prop_ref(property_reference)
+
+    # Define request body
+    sorCodes : list[RateScheduleItemDict] =[{
+        "customCode": sor_code.code,
+        "customName": sor_code.short_description,
+        "quantity": {"amount": [1]},
+    }]
+
+    request_body: WorkOrderPayload = {
+        "reference": [{"id": str(uuid.uuid4())}],
+        "descriptionOfWork": description,
+        "priority": {
+            "priorityCode": priority.priority_code, 
+            "priorityDescription": priority.description,
+            "numberOfDays": int(priority.days_to_complete)  # type: ignore[arg-type]
+        },
+        "workClass": {"workClassCode": 0},
+        "workElement": [
+            {
+                "rateScheduleItem": [item], 
+                "trade": [{
+                    "code": "SP", 
+                    "customCode": trade.code, 
+                    "customName": trade.name
+                }]
+            }
+            for item in sorCodes
+        ],
+        "site": {
+            "property": [{
+                "propertyReference": property_reference,
+                "address": {
+                    "addressLine": [property[0]['assetAddress']['addressLine1']],
+                    "postalCode": property[0]['assetAddress']['postCode'],
+                },
+                "reference": [{"id": property_reference}],
+            }]
+        },
+        "instructedBy": {"name": instructed_by},
+        "assignedToPrimary": {
+            "name": contractor.name,
+            "organization": {"reference": [{"id": contractor.reference}]},
+        },
+        "customer": {
+            "name": customer_name,
+            "person": {
+                "name": {"full": customer_name},
+                "communication": [
+                    {
+                        "channel": {"medium": "20", "code": "60"},
+                        "value": customer_number,
+                    }
+                ],
+            },
+        },
+        "budgetCode": {
+            "id": budget_code.id
+        },
+        "multiTradeWorkOrder": False,
+        "isAwaabsDampAndMouldRepair": False,
+    }
+
+    success = create_work_order_via_api(request_body)
+
+    return property_reference, success
+
 def main():
     # Fetch data from RepairsDB
     RepairsSession = session_for_repairs(Config.STAGE, expire_on_commit=True, local_port=Config.DB_LOCAL_PORT)
 
+    # Temporary hardcoded values
+    corporate_subjective_code="200045"
+    external_cost_code="H2555"
+    priority_code = Priority.NORMAL
+    trade_code = "PL"
+    sor_code_code = "EICR0005"
+    contractor_reference = "RG2"
+    description = "Carry out EICR including Smoke Alarms and remedials works as per agreed basket rate and upload to SAFe"
+
     with RepairsSession() as db_session:
-        budget_code = get_budget_code(db_session, corporate_subjective_code="200045", external_cost_code="H2555")
-        priority = get_sor_priority(db_session, Priority.NORMAL)
-        trade = get_trade(db_session, "PL")
-        sor_code = get_sor_code(db_session, "EICR0005")
-        contractor = get_contractor(db_session, "RG2")
-
-    property_list = [
-        "00023402",
-        "00023402",
-        "00023402",
-        "00023402",
-        "00023402",
-        "00023402",
-        "00023402",
-        "00023402",
-        "00023402",
-        "00023402",
-        "00023402",
-        "00023402",
-        "00023402",
-        "00023402",
-        "00023402",
-        "00023402",
-        "00023402",
-        "00023402",
-        "00023402",
-    ]
+        budget_code = get_budget_code(db_session, corporate_subjective_code, external_cost_code)
+        priority = get_sor_priority(db_session, priority_code)
+        trade = get_trade(db_session, trade_code)
+        sor_code = get_sor_code(db_session, sor_code_code)
+        contractor = get_contractor(db_session, contractor_reference)
     
+    # Replace with data fetched from the spreadsheet
+    property_list = [{
+        "property_reference": "00023402",
+        "description": description
+    }] * 10000
+
+
+    progress_lock = Lock()
+
     with progress.Bar("Creating workOrders", max=len(property_list)) as progress_bar:
+        failed = []
 
-        for property_reference in property_list:
-            # Fetch property from asset DB
-            property = get_asset_by_prop_ref(property_reference)
-
-            # Define request body
-            sorCodes : list[RateScheduleItemDict] =[{
-                "customCode": sor_code.code,
-                "customName": sor_code.short_description,
-                "quantity": {"amount": [1]},
-            }]
-
-            request_body: WorkOrderPayload = {
-                "reference": [{"id": str(uuid.uuid4())}],
-                "descriptionOfWork": "Carry out EICR including Smoke Alarms and remedials works as per agreed basket rate and upload to SAFe",
-                "priority": {
-                    "priorityCode": priority.priority_code, 
-                    "priorityDescription": priority.description,
-                    "numberOfDays": int(priority.days_to_complete)  # type: ignore[arg-type]
-                },
-                "workClass": {"workClassCode": 0},
-                "workElement": [
-                    {
-                        "rateScheduleItem": [item], 
-                        "trade": [{
-                            "code": "SP", 
-                            "customCode": trade.code, 
-                            "customName": trade.name
-                        }]
-                    }
-                    for item in sorCodes
-                ],
-                "site": {
-                    "property": [{
-                        "propertyReference": property_reference,
-                        "address": {
-                            "addressLine": [property[0]['assetAddress']['addressLine1']],
-                            "postalCode": property[0]['assetAddress']['postCode'],
-                        },
-                        "reference": [{"id": property_reference}],
-                    }]
-                },
-                "instructedBy": {"name": "Hackney Housing"},
-                "assignedToPrimary": {
-                    "name": contractor.name,
-                    "organization": {"reference": [{"id": contractor.reference}]},
-                },
-                "customer": {
-                    "name": "n/a",
-                    "person": {
-                        "name": {"full": "n/a"},
-                        "communication": [
-                            {
-                                "channel": {"medium": "20", "code": "60"},
-                                "value": "0000",
-                            }
-                        ],
-                    },
-                },
-                "budgetCode": {
-                    "id": budget_code.id
-                },
-                "multiTradeWorkOrder": False,
-                "isAwaabsDampAndMouldRepair": False,
+        with ThreadPoolExecutor(max_workers=Config.THREAD_POOL_COUNT) as executor:
+            futures = {
+                executor.submit(process_work_order, row['property_reference'], budget_code, priority, trade, sor_code, contractor, row['description']): row['property_reference']
+                for row in property_list
             }
 
-            create_work_order_via_api(request_body)
-            progress_bar.next()
+            for future in as_completed(futures):
+                property_reference = futures[future]
+
+                # ToDo - Add textfile with processed records
+
+                try:
+                    _, success = future.result()
+                    if not success:
+                            failed.append(property_reference)
+                except Exception as e:
+                    print(f"Failed on {property_reference}: {e}")
+                    failed.append(property_reference)
+                finally:
+                    with progress_lock:
+                        progress_bar.next()
 
 if __name__ == "__main__":
     main()
