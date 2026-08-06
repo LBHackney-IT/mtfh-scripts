@@ -19,28 +19,25 @@ from sqlalchemy import Select, select
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import NoResultFound, MultipleResultsFound
 from aws.database.rds.repairs.scripts.bulk_upload.types import *
+from dataclasses import dataclass
 
-# @dataclass
-# class Config:
-#     TABLE_NAME = "Assets"
-#     OUTPUT_CLASS = Asset
-#     LOGGER = Logger()
-#     STAGE = Stage.HOUSING_STAGING
-#     ITEM_COUNT_LIMIT = 10  # Set to None to return all items
+@dataclass
+class Config:
+    STAGE = Stage.HOUSING_DEVELOPMENT 
+    DB_LOCAL_PORT = 6005
 
-STAGE = Stage.HOUSING_DEVELOPMENT
-session = get_session_for_stage(STAGE)
+session = get_session_for_stage(Config.STAGE)
 ssm_client: SSMClient = session.client("ssm")
 
 # Hackney JWT for authenticating to the API
 hackney_jwt = os.environ.get("HACKNEY_JWT_WORK_ORDER")
 assert hackney_jwt, "HACKNEY_JWT_WORK_ORDER environment variable not set"
 
-path_repairs_api_url = f"/repairs-hub/{STAGE.to_env_name()}/repairs-service-api-url"
+path_repairs_api_url = f"/repairs-hub/{Config.STAGE.to_env_name()}/repairs-service-api-url"
 repairs_api_url = ssm_client.get_parameter(Name=path_repairs_api_url)["Parameter"].get("Value")
 assert repairs_api_url, "repairs-service-api-url variable not set"
 
-path_repairs_api_key = f"/repairs-hub/{STAGE.to_env_name()}/repairs-service-api-key"
+path_repairs_api_key = f"/repairs-hub/{Config.STAGE.to_env_name()}/repairs-service-api-key"
 repairs_api_key = ssm_client.get_parameter(Name=path_repairs_api_key)["Parameter"].get("Value")
 assert repairs_api_key, "repairs-service-api-key variable not set"
 
@@ -98,7 +95,7 @@ def build_work_order(
     }
 
 def get_asset_by_prop_ref(property_reference: str):
-    table = get_dynamodb_table("Assets", STAGE)
+    table = get_dynamodb_table("Assets", Config.STAGE)
     return get_by_secondary_index(table, "AssetId", "assetId", property_reference)
 
 T = TypeVar("T")
@@ -138,12 +135,8 @@ def get_contractor(session: Session, reference: str) -> Contractor:
     return fetch_one(session, select(Contractor).where(Contractor.reference == reference), label="contractors")
         
 def main():
-    # Fetch property from asset DB
-    property_reference = "00023402"
-    property = get_asset_by_prop_ref(property_reference)
-
     # Fetch data from RepairsDB
-    RepairsSession = session_for_repairs(STAGE, expire_on_commit=True, local_port=6005)
+    RepairsSession = session_for_repairs(Config.STAGE, expire_on_commit=True, local_port=Config.DB_LOCAL_PORT)
 
     with RepairsSession() as db_session:
         budget_code = get_budget_code(db_session, corporate_subjective_code="200045", external_cost_code="H2555")
@@ -151,6 +144,10 @@ def main():
         trade = get_trade(db_session, "PL")
         sor_code = get_sor_code(db_session, "EICR0005")
         contractor = get_contractor(db_session, "RG2")
+
+    # Fetch property from asset DB
+    property_reference = "00023402"
+    property = get_asset_by_prop_ref(property_reference)
 
     # Define request body
     request_body = build_work_order(
