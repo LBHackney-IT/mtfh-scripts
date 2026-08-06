@@ -20,6 +20,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import NoResultFound, MultipleResultsFound
 from aws.database.rds.repairs.scripts.bulk_upload.types import *
 from dataclasses import dataclass
+import progress.bar as progress
 
 @dataclass
 class Config:
@@ -145,55 +146,80 @@ def main():
         sor_code = get_sor_code(db_session, "EICR0005")
         contractor = get_contractor(db_session, "RG2")
 
-    # Fetch property from asset DB
-    property_reference = "00023402"
-    property = get_asset_by_prop_ref(property_reference)
+    property_list = [
+        "00023402",
+        "00023402",
+        "00023402",
+        "00023402",
+        "00023402",
+        "00023402",
+        "00023402",
+        "00023402",
+        "00023402",
+        "00023402",
+        "00023402",
+        "00023402",
+        "00023402",
+        "00023402",
+        "00023402",
+        "00023402",
+        "00023402",
+        "00023402",
+        "00023402",
+    ]
+    
+    with progress.Bar("Creating workOrders", max=len(property_list)) as progress_bar:
 
-    # Define request body
-    request_body = build_work_order(
-        descriptionOfWork="Carry out EICR including Smoke Alarms and remedials works as per agreed basket rate and upload to SAFe",
-        priority={
-            "priorityCode": priority.priority_code, 
-            "priorityDescription": priority.description,
-            "numberOfDays": int(priority.days_to_complete)  # type: ignore[arg-type]
-        },
-        trade={
-            "code": "SP", 
-            "customCode": trade.code, 
-            "customName": trade.name},
-        sorCodes=[{
-            "customCode": sor_code.code,
-            "customName": sor_code.short_description,
-            "quantity": {"amount": [1]},
-        }],
-        property={
-            "propertyReference": property_reference,
-            "address": {
-                "addressLine": [property[0]['assetAddress']['addressLine1']],
-                "postalCode": property[0]['assetAddress']['postCode'],
-            },
-            "reference": [{"id": property_reference}],
-        },
-        assignedToPrimary={
-            "name": contractor.name,
-            "organization": {"reference": [{"id": contractor.reference}]},
-        },
-        customer={
-            "name": "n/a",
-            "person": {
-                "name": {"full": "n/a"},
-                "communication": [
-                    {
-                        "channel": {"medium": "20", "code": "60"},
-                        "value": "0000",
-                    }
-                ],
-            },
-        },
-        budgetCode=budget_code.id
-    )
+        for property_reference in property_list:
+            # Fetch property from asset DB
+            property = get_asset_by_prop_ref(property_reference)
 
-    create_work_order_via_api(request_body)
+            # Define request body
+            request_body = build_work_order(
+                descriptionOfWork="Carry out EICR including Smoke Alarms and remedials works as per agreed basket rate and upload to SAFe",
+                priority={
+                    "priorityCode": priority.priority_code, 
+                    "priorityDescription": priority.description,
+                    "numberOfDays": int(priority.days_to_complete)  # type: ignore[arg-type]
+                },
+                trade={
+                    "code": "SP", 
+                    "customCode": trade.code, 
+                    "customName": trade.name},
+                sorCodes=[{
+                    "customCode": sor_code.code,
+                    "customName": sor_code.short_description,
+                    "quantity": {"amount": [1]},
+                }],
+                property={
+                    "propertyReference": property_reference,
+                    "address": {
+                        "addressLine": [property[0]['assetAddress']['addressLine1']],
+                        "postalCode": property[0]['assetAddress']['postCode'],
+                    },
+                    "reference": [{"id": property_reference}],
+                },
+                assignedToPrimary={
+                    "name": contractor.name,
+                    "organization": {"reference": [{"id": contractor.reference}]},
+                },
+                customer={
+                    "name": "n/a",
+                    "person": {
+                        "name": {"full": "n/a"},
+                        "communication": [
+                            {
+                                "channel": {"medium": "20", "code": "60"},
+                                "value": "0000",
+                            }
+                        ],
+                    },
+                },
+                budgetCode=budget_code.id
+            )
+
+            create_work_order_via_api(request_body)
+            progress_bar.next()
 
 if __name__ == "__main__":
     main()
