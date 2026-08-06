@@ -16,6 +16,11 @@ from aws.database.rds.repairs.entities.SORCodeStore import SorCode
 from aws.database.rds.repairs.entities.ContractorStore import Contractor
 from sqlalchemy.exc import NoResultFound, MultipleResultsFound
 from enum import Enum
+from sqlalchemy.orm import Session
+from typing import TypeVar
+from sqlalchemy import Select, select
+from sqlalchemy.orm import Session
+from sqlalchemy.exc import NoResultFound, MultipleResultsFound
 
 class ReferenceDict(TypedDict):
     id: str
@@ -208,25 +213,25 @@ def get_asset_by_prop_ref(property_reference: str):
     table = get_dynamodb_table("Assets", STAGE)
     return get_by_secondary_index(table, "AssetId", "assetId", property_reference)
 
-def open_db_session():
-    return session_for_repairs(STAGE, expire_on_commit=False, local_port=6005)
+T = TypeVar("T")
 
-def get_budget_code(corporate_subjective_code: str, external_cost_code: str):
-    RepairsSession = open_db_session()
+def fetch_one(session: Session, stmt: Select[tuple[T]], label: str) -> T:
+    try:
+        return session.scalars(stmt).one()
+    except NoResultFound:
+        raise LookupError(f"No {label} found") from None
+    except MultipleResultsFound:
+        raise LookupError(f"Multiple {label} matched — expected exactly one") from None
 
-    with RepairsSession.begin() as session:       
-        try:
-            return session.query(BudgetCode) \
-                .where(BudgetCode.corporate_subjective_code == corporate_subjective_code) \
-                .where(BudgetCode.external_cost_code == external_cost_code) \
-                .where(BudgetCode.cost_code.is_(None)) \
-                .one()
-            
-            return budget_code
-        except NoResultFound:
-            raise ValueError("No matching budget code found")
-        except MultipleResultsFound:
-            raise ValueError("Multiple budget codes matched — expected exactly one")
+def get_budget_code(session: Session, corporate_subjective_code: str, external_cost_code: str):
+    return fetch_one(
+        session, 
+        select(BudgetCode)
+            .where(BudgetCode.corporate_subjective_code == corporate_subjective_code)
+            .where(BudgetCode.external_cost_code == external_cost_code) 
+            .where(BudgetCode.cost_code.is_(None)),
+        label="budget codes"
+    )
 
 class Priority(str, Enum):
     IMMEDIATE = "[I] IMMEDIATE"
@@ -240,70 +245,36 @@ class Priority(str, Enum):
     LEGAL_DISREPAIR_EPA_20_DAYS = "[L2] LD EPA 20 DAYS"
     MINOR_ADAPTATION = "[AD20] Minor Adaptation"
 
-def get_sor_priority(priority: Priority) -> SORPriority:
-    RepairsSession = open_db_session()
+def get_sor_priority(session: Session, priority: Priority) -> SORPriority:
+    return fetch_one(
+        session, 
+        select(SORPriority).where(SORPriority.enabled.is_(True)).where(SORPriority.description == priority.value), 
+        label="priorities"
+    )
 
-    with RepairsSession.begin() as session:
-        try:
-            return session.query(SORPriority) \
-                .where(SORPriority.enabled.is_(True)) \
-                .where(SORPriority.description == priority.value) \
-                .one()
-        except NoResultFound:
-            raise ValueError("No matching SOR priority found")
-        except MultipleResultsFound:
-            raise ValueError("Multiple SOR priorities matched — expected exactly one")
+def get_trade(session: Session, code: str) -> Trade:
+    return fetch_one(session, select(Trade).where(Trade.code == code), label="trades")
 
+def get_sor_code(session: Session, code: str) -> SorCode:
+    return fetch_one(session, select(SorCode).where(SorCode.code == code), label="sor codes")     
 
-def get_trade(code: str) -> Trade:
-    RepairsSession = open_db_session()
-
-    with RepairsSession.begin() as session:
-        try:
-            return session.query(Trade) \
-                .where(Trade.code == code) \
-                .one()
-        except NoResultFound:
-            raise ValueError("No matching trade found")
-        except MultipleResultsFound:
-            raise ValueError("Multiple trades matched — expected exactly one")
-
-def get_sor_code(code: str) -> SorCode:
-    RepairsSession = open_db_session()
-
-    with RepairsSession.begin() as session:
-        try:
-            return session.query(SorCode) \
-                .where(SorCode.code == code) \
-                .one()
-        except NoResultFound:
-            raise ValueError("No matching SOR code found")
-        except MultipleResultsFound:
-            raise ValueError("Multiple SOR codes matched — expected exactly one")
-        
-def get_contractor(reference: str) -> Contractor:
-    RepairsSession = open_db_session()
-
-    with RepairsSession.begin() as session:
-        try:
-            return session.query(Contractor) \
-                .where(Contractor.reference == reference) \
-                .one()
-        except NoResultFound:
-            raise ValueError("No matching contractor found")
-        except MultipleResultsFound:
-            raise ValueError("Multiple contractors matched — expected exactly one")
+def get_contractor(session: Session, reference: str) -> Contractor:
+    return fetch_one(session, select(Contractor).where(Contractor.reference == reference), label="contractors")
         
 def main():
     # Fetch property from asset API
     property_reference = "00023402"
     property = get_asset_by_prop_ref(property_reference)
 
-    budget_code = get_budget_code(corporate_subjective_code="200045", external_cost_code="H2555")
-    priority = get_sor_priority(Priority.NORMAL)
-    trade = get_trade("PL")
-    sor_code = get_sor_code("EICR0005")
-    contractor = get_contractor("RG2")
+    # Fetch data from RepairsDB
+    RepairsSession = session_for_repairs(STAGE, expire_on_commit=False, local_port=6005)
+
+    with RepairsSession() as db_session:
+        budget_code = get_budget_code(db_session, corporate_subjective_code="200045", external_cost_code="H2555")
+        priority = get_sor_priority(db_session, Priority.NORMAL)
+        trade = get_trade(db_session, "PL")
+        sor_code = get_sor_code(db_session, "EICR0005")
+        contractor = get_contractor(db_session, "RG2")
 
     # Define request body
 
