@@ -29,6 +29,7 @@ class Config:
     STAGE = Stage.HOUSING_DEVELOPMENT 
     DB_LOCAL_PORT = 6005
     THREAD_POOL_COUNT = 50
+    LOG_FILE_PATH = "successfully_created_jobs.txt"
 
 session = get_session_for_stage(Config.STAGE)
 asset_dynamodb_table = get_dynamodb_table("Assets", Config.STAGE)
@@ -184,6 +185,12 @@ def process_work_order(
 
     return property_reference, success
 
+def load_completed_jobs(path: str) -> set[str]:
+    if not os.path.exists(path):
+        return set()
+    with open(path) as f:
+        return {line.strip() for line in f if line.strip()}
+
 def main():
     # Temporary hardcoded values
     corporate_subjective_code="200045"
@@ -195,19 +202,30 @@ def main():
     description = "Carry out EICR including Smoke Alarms and remedials works as per agreed basket rate and upload to SAFe"
 
     # Fetch data from RepairsDB
+    # These requests should be loaded for each row, in case the data is different
+    # The data should be cached within a dictionary to prevent unnecessary queries
+    # This may require locking. But is probably overkill
     with RepairsSession() as db_session:
         budget_code = get_budget_code(db_session, corporate_subjective_code, external_cost_code)
         priority = get_sor_priority(db_session, priority_code)
         trade = get_trade(db_session, trade_code)
         sor_code = get_sor_code(db_session, sor_code_code)
         contractor = get_contractor(db_session, contractor_reference)
+
+    completed = load_completed_jobs(Config.LOG_FILE_PATH)
     
     # Replace with data fetched from the spreadsheet
     property_list = [{
         "property_reference": "00023402",
         "description": description
-    }] * 10000
+    }] * 10
 
+    # Filter out completed jobs
+    property_list = [row for row in property_list if row['property_reference'] not in completed]
+
+    if not property_list:
+        print("Nothing left to process.")
+        return
 
     progress_lock = Lock()
 
@@ -222,13 +240,14 @@ def main():
 
             for future in as_completed(futures):
                 property_reference = futures[future]
-
-                # ToDo - Add textfile with processed records
-
+                
                 try:
                     _, success = future.result()
                     if not success:
-                            failed.append(property_reference)
+                        failed.append(property_reference)
+                    else:
+                        with open(Config.LOG_FILE_PATH, "a") as f:
+                            f.write(f"{property_reference}\n")
                 except Exception as e:
                     print(f"Failed on {property_reference}: {e}")
                     failed.append(property_reference)
