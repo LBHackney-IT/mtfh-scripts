@@ -34,6 +34,14 @@ class Config:
     # SOURCE_FILE_PATH = "data/jobs_to_load.tsv"
     SOURCE_FILE_PATH = "data/new.csv"
 
+@dataclass
+class CSV_KEYS:
+    description_key = 'Description'
+    sor_code_key = "SorCode"
+    unique_id_key = 'Unique Id'
+    prop_ref_key = 'Property Reference'
+    priority_key = "Priority"
+
 session = get_session_for_stage(Config.STAGE)
 asset_dynamodb_table = get_dynamodb_table("Assets", Config.STAGE)
 ssm_client: SSMClient = session.client("ssm")
@@ -99,8 +107,10 @@ def get_sor_priorities(session: Session) -> dict[str, SORPriority]:
 def get_trade(session: Session, code: str) -> Trade:
     return fetch_one(session, select(Trade).where(Trade.code == code), label="trades")
 
-def get_sor_code(session: Session, code: str) -> SorCode:
-    return fetch_one(session, select(SorCode).where(SorCode.code == code), label="sor codes")     
+def get_sor_codes(session: Session, codes: set[str]) -> dict[str, SorCode]:
+    stmt = select(SorCode).where(SorCode.enabled.is_(True)).where(SorCode.code.in_(codes))
+    results = session.scalars(stmt).all()
+    return {sor_code.code: sor_code for sor_code in results}
 
 def get_contractor(session: Session, reference: str) -> Contractor:
     return fetch_one(session, select(Contractor).where(Contractor.reference == reference), label="contractors")
@@ -194,6 +204,23 @@ def load_completed_jobs(path: str) -> set[str]:
     with open(path) as f:
         return {line.strip() for line in f if line.strip()}
 
+def map_and_validate_priorities(results: list[dict], all_priorities: dict[str, SORPriority]):
+    missing_priorities = {
+        row[CSV_KEYS.priority_key]
+        for row in results
+        if PRIORITY_NAME_TO_DESCRIPTION.get(row[CSV_KEYS.priority_key]) not in all_priorities
+    }
+    if missing_priorities:
+        raise ValueError(f"Unknown priority values, not found in database: {missing_priorities}")
+
+    for row in results:
+        row["priority_from_db"] = all_priorities[PRIORITY_NAME_TO_DESCRIPTION[row[CSV_KEYS.priority_key]]]
+
+def validate_missing_sor_codes(results: list[dict], all_sor_codes: dict[str, SorCode]):
+    missing_codes = {row[CSV_KEYS.sor_code_key] for row in results if row[CSV_KEYS.sor_code_key] not in all_sor_codes}
+    if missing_codes:
+        raise ValueError(f"Unknown SOR codes, not found in database: {missing_codes}")
+
 def main():
     # Temporary hardcoded values (this should all be the same for a given bulk upload)
     trade_code = "PL"
@@ -201,53 +228,30 @@ def main():
     corporate_subjective_code="200045"
     external_cost_code="H2555"
 
-
-    priority_code = Priority.NORMAL
-    sor_code_code = "EICR0005"
-
     # Slice the first 5 rows
     results = csv_to_dict_list(Config.SOURCE_FILE_PATH, is_tsv=False)[:5]
+    completed = load_completed_jobs(Config.LOG_FILE_PATH)
 
+    # Filter out completed jobs
+    results = [row for row in results if str(row[CSV_KEYS.unique_id_key]) not in completed]
+
+    if not results:
+        print("Nothing left to process.")
+        return
+    
+    # Extract SOR Codes
+    extracted_sor_codes = {row[CSV_KEYS.sor_code_key] for row in results}
+    
     # Fetch data from RepairsDB
-    # These requests should be loaded for each row, in case the data is different
-    # The data should be cached within a dictionary to prevent unnecessary queries
-    # This may require locking. But is probably overkill
     with RepairsSession() as db_session:
         budget_code = get_budget_code(db_session, corporate_subjective_code, external_cost_code)
         all_priorities = get_sor_priorities(db_session)
         trade = get_trade(db_session, trade_code)
         contractor = get_contractor(db_session, contractor_reference)
-        # Sor Code should be moved within the process_work_order() method
-        sor_code = get_sor_code(db_session, sor_code_code)
+        all_sor_codes = get_sor_codes(db_session, extracted_sor_codes)
 
-    completed = load_completed_jobs(Config.LOG_FILE_PATH)
-
-    unique_id_key = 'Compliance Ref No'
-    prop_ref_key = 'Property Reference Number'
-    description_key = 'Job Description'
-    priority_key = "priority"
-
-    # Filter out completed jobs
-    results = [row for row in results if str(row[unique_id_key]) not in completed]
-
-    if not results:
-        print("Nothing left to process.")
-        return
-
-    all_priorities: dict[str, SORPriority]
-
-
-    # Map and validate priorities from db values. May need to be wrapped inside a function
-    missing_priorities = {
-        row[priority_key] for row in results if row[priority_key] not in all_priorities
-    }
-    if missing_priorities:
-        raise ValueError(f"Unknown priority values, not found in database: {missing_priorities}")
-
-    for row in results:
-        row["priority_from_db"] = all_priorities[row[priority_key]]
-
-
+    validate_missing_sor_codes(results, all_sor_codes)
+    map_and_validate_priorities(results, all_priorities)
 
     progress_lock = Lock()
 
@@ -256,7 +260,7 @@ def main():
 
         with ThreadPoolExecutor(max_workers=Config.THREAD_POOL_COUNT) as executor:
             futures = {
-                executor.submit(process_work_order, row[prop_ref_key], budget_code, row["priority_from_db"], trade, sor_code, contractor, row[description_key]): row[unique_id_key]
+                executor.submit(process_work_order, row[CSV_KEYS.prop_ref_key], budget_code, row["priority_from_db"], trade, all_sor_codes[row[CSV_KEYS.sor_code_key]], contractor, row[CSV_KEYS.description_key]): row[CSV_KEYS.unique_id_key]
                 for row in results
             }
 

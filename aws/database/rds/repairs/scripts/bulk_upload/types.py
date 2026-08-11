@@ -104,14 +104,17 @@ class WorkOrderPayload(TypedDict):
     isAwaabsDampAndMouldRepair: bool
     budgetCode: BudgetCodeDict
 
-class Priority(str, Enum):
-    IMMEDIATE = "[I] IMMEDIATE"
-    EMERGENCY = "[E] EMERGENCY"
-    URGENT = "[U] URGENT"
-    NORMAL = "[N] NORMAL"
-    PLANNED_MAINTENANCE = "[P] PLANNED MAINT"
-    VOIDS_MINOR = "[V15] Voids minor"
-    VOIDS_MAJOR = "[V30] Voids major"
-    LEGAL_DISREPAIR = "[L] LEGAL DISREP"
-    LEGAL_DISREPAIR_EPA_20_DAYS = "[L2] LD EPA 20 DAYS"
-    MINOR_ADAPTATION = "[AD20] Minor Adaptation"
+
+# To map value from spreadsheet to description in database
+PRIORITY_NAME_TO_DESCRIPTION = {
+    "IMMEDIATE": "[I] IMMEDIATE",
+    "EMERGENCY": "[E] EMERGENCY",
+    "URGENT": "[U] URGENT",
+    "NORMAL": "[N] NORMAL",
+    "PLANNED_MAINTENANCE": "[P] PLANNED MAINT",
+    "VOIDS_MINOR": "[V15] Voids minor",
+    "VOIDS_MAJOR": "[V30] Voids major",
+    "LEGAL_DISREPAIR": "[L] LEGAL DISREP",
+    "LEGAL_DISREPAIR_EPA_20_DAYS": "[L2] LD EPA 20 DAYS",
+    "MINOR_ADAPTATION": "[AD20] Minor Adaptation",
+}
