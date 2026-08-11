@@ -23,6 +23,7 @@ from dataclasses import dataclass
 import progress.bar as progress
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from threading import Lock
+from aws.utils.csv_to_dict_list import csv_to_dict_list
 
 @dataclass
 class Config:
@@ -30,6 +31,8 @@ class Config:
     DB_LOCAL_PORT = 6005
     THREAD_POOL_COUNT = 50
     LOG_FILE_PATH = "successfully_created_jobs.txt"
+    # SOURCE_FILE_PATH = "data/jobs_to_load.tsv"
+    SOURCE_FILE_PATH = "data/new.csv"
 
 session = get_session_for_stage(Config.STAGE)
 asset_dynamodb_table = get_dynamodb_table("Assets", Config.STAGE)
@@ -86,12 +89,12 @@ def get_budget_code(session: Session, corporate_subjective_code: str, external_c
         label="budget codes"
     )
 
-def get_sor_priority(session: Session, priority: Priority) -> SORPriority:
-    return fetch_one(
-        session, 
-        select(SORPriority).where(SORPriority.enabled.is_(True)).where(SORPriority.description == priority.value), 
-        label="priorities"
-    )
+def get_sor_priorities(session: Session) -> dict[str, SORPriority]:
+    stmt = select(SORPriority).where(SORPriority.enabled.is_(True))
+    results = session.scalars(stmt).all()
+    if not results:
+        raise LookupError("No priorities found")
+    return {priority.description: priority for priority in results}
 
 def get_trade(session: Session, code: str) -> Trade:
     return fetch_one(session, select(Trade).where(Trade.code == code), label="trades")
@@ -192,14 +195,18 @@ def load_completed_jobs(path: str) -> set[str]:
         return {line.strip() for line in f if line.strip()}
 
 def main():
-    # Temporary hardcoded values
+    # Temporary hardcoded values (this should all be the same for a given bulk upload)
+    trade_code = "PL"
+    contractor_reference = "RG2"
     corporate_subjective_code="200045"
     external_cost_code="H2555"
+
+
     priority_code = Priority.NORMAL
-    trade_code = "PL"
     sor_code_code = "EICR0005"
-    contractor_reference = "RG2"
-    description = "Carry out EICR including Smoke Alarms and remedials works as per agreed basket rate and upload to SAFe"
+
+    # Slice the first 5 rows
+    results = csv_to_dict_list(Config.SOURCE_FILE_PATH, is_tsv=False)[:5]
 
     # Fetch data from RepairsDB
     # These requests should be loaded for each row, in case the data is different
@@ -207,50 +214,65 @@ def main():
     # This may require locking. But is probably overkill
     with RepairsSession() as db_session:
         budget_code = get_budget_code(db_session, corporate_subjective_code, external_cost_code)
-        priority = get_sor_priority(db_session, priority_code)
+        all_priorities = get_sor_priorities(db_session)
         trade = get_trade(db_session, trade_code)
-        sor_code = get_sor_code(db_session, sor_code_code)
         contractor = get_contractor(db_session, contractor_reference)
+        # Sor Code should be moved within the process_work_order() method
+        sor_code = get_sor_code(db_session, sor_code_code)
 
     completed = load_completed_jobs(Config.LOG_FILE_PATH)
-    
-    # Replace with data fetched from the spreadsheet
-    property_list = [{
-        "property_reference": "00023402",
-        "description": description
-    }] * 10
+
+    unique_id_key = 'Compliance Ref No'
+    prop_ref_key = 'Property Reference Number'
+    description_key = 'Job Description'
+    priority_key = "priority"
 
     # Filter out completed jobs
-    property_list = [row for row in property_list if row['property_reference'] not in completed]
+    results = [row for row in results if str(row[unique_id_key]) not in completed]
 
-    if not property_list:
+    if not results:
         print("Nothing left to process.")
         return
 
+    all_priorities: dict[str, SORPriority]
+
+
+    # Map and validate priorities from db values. May need to be wrapped inside a function
+    missing_priorities = {
+        row[priority_key] for row in results if row[priority_key] not in all_priorities
+    }
+    if missing_priorities:
+        raise ValueError(f"Unknown priority values, not found in database: {missing_priorities}")
+
+    for row in results:
+        row["priority_from_db"] = all_priorities[row[priority_key]]
+
+
+
     progress_lock = Lock()
 
-    with progress.Bar("Creating workOrders", max=len(property_list)) as progress_bar:
+    with progress.Bar("Creating workOrders", max=len(results)) as progress_bar:
         failed = []
 
         with ThreadPoolExecutor(max_workers=Config.THREAD_POOL_COUNT) as executor:
             futures = {
-                executor.submit(process_work_order, row['property_reference'], budget_code, priority, trade, sor_code, contractor, row['description']): row['property_reference']
-                for row in property_list
+                executor.submit(process_work_order, row[prop_ref_key], budget_code, row["priority_from_db"], trade, sor_code, contractor, row[description_key]): row[unique_id_key]
+                for row in results
             }
 
             for future in as_completed(futures):
-                property_reference = futures[future]
-                
+                unique_id = futures[future]
+
                 try:
                     _, success = future.result()
                     if not success:
-                        failed.append(property_reference)
+                        failed.append(unique_id)
                     else:
                         with open(Config.LOG_FILE_PATH, "a") as f:
-                            f.write(f"{property_reference}\n")
+                            f.write(f"{unique_id}\n")
                 except Exception as e:
-                    print(f"Failed on {property_reference}: {e}")
-                    failed.append(property_reference)
+                    print(f"Failed on {unique_id}: {e}")
+                    failed.append(unique_id)
                 finally:
                     with progress_lock:
                         progress_bar.next()
