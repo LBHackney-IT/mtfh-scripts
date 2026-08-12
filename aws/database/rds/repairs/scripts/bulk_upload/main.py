@@ -24,6 +24,7 @@ import progress.bar as progress
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from threading import Lock
 from aws.utils.csv_to_dict_list import csv_to_dict_list
+import json
 
 @dataclass
 class Config:
@@ -33,6 +34,7 @@ class Config:
     LOG_FILE_PATH = "successfully_created_jobs.txt"
     # SOURCE_FILE_PATH = "data/jobs_to_load.tsv"
     SOURCE_FILE_PATH = "data/new.csv"
+    REQUEST_BODY_FILE_PATH = "data/request_bodies.json"
 
 @dataclass
 class CSV_KEYS:
@@ -41,6 +43,14 @@ class CSV_KEYS:
     unique_id_key = 'Unique Id'
     prop_ref_key = 'Property Reference'
     priority_key = "Priority"
+
+@dataclass
+class Job:
+    """One CSV row as it moves through build -> review -> send."""
+    unique_id: str
+    # row: dict
+    payload: WorkOrderPayload
+
 
 session = get_session_for_stage(Config.STAGE)
 asset_dynamodb_table = get_dynamodb_table("Assets", Config.STAGE)
@@ -116,19 +126,22 @@ def get_contractor(session: Session, reference: str) -> Contractor:
     return fetch_one(session, select(Contractor).where(Contractor.reference == reference), label="contractors")
         
 
-def process_work_order(
-    property_reference: str, 
+def build_work_order_payload(
+    row: dict,
     budget_code: BudgetCode,
-    priority: SORPriority,
     trade: Trade,
     sor_code: SorCode,
     contractor: Contractor,  
-    description: str
-):
+
+) -> Job:
     # Hardcoded values (unlikely to change)
     customer_name = "n/a"
     customer_number = "0000"
     instructed_by = "Hackney Housing" # Default hackney TMO value
+
+    property_reference = row[CSV_KEYS.prop_ref_key]
+    priority = row["priority_from_db"]
+    description = row[CSV_KEYS.description_key]
 
     # Fetch property from asset DB
     property = get_asset_by_prop_ref(property_reference)
@@ -140,7 +153,7 @@ def process_work_order(
         "quantity": {"amount": [1]},
     }]
 
-    request_body: WorkOrderPayload = {
+    payload: WorkOrderPayload = {
         "reference": [{"id": str(uuid.uuid4())}],
         "descriptionOfWork": description,
         "priority": {
@@ -194,9 +207,12 @@ def process_work_order(
         "isAwaabsDampAndMouldRepair": False,
     }
 
-    success = create_work_order_via_api(request_body)
+    return Job(
+        unique_id=row[CSV_KEYS.unique_id_key],
+        payload=payload,
+        # row = row
+    )
 
-    return property_reference, success
 
 def load_completed_jobs(path: str) -> set[str]:
     if not os.path.exists(path):
@@ -253,14 +269,14 @@ def main():
     validate_missing_sor_codes(results, all_sor_codes)
     map_and_validate_priorities(results, all_priorities)
 
+
     progress_lock = Lock()
+    job_list: list[Job] = []
 
-    with progress.Bar("Creating workOrders", max=len(results)) as progress_bar:
-        failed = []
-
+    with progress.Bar("Generating request payloads", max=len(results)) as progress_bar:
         with ThreadPoolExecutor(max_workers=Config.THREAD_POOL_COUNT) as executor:
             futures = {
-                executor.submit(process_work_order, row[CSV_KEYS.prop_ref_key], budget_code, row["priority_from_db"], trade, all_sor_codes[row[CSV_KEYS.sor_code_key]], contractor, row[CSV_KEYS.description_key]): row[CSV_KEYS.unique_id_key]
+                executor.submit(build_work_order_payload, row, budget_code, trade, all_sor_codes[row[CSV_KEYS.sor_code_key]], contractor): row[CSV_KEYS.unique_id_key]
                 for row in results
             }
 
@@ -268,7 +284,37 @@ def main():
                 unique_id = futures[future]
 
                 try:
-                    _, success = future.result()
+                    job = future.result()
+                    job_list.append(job)
+                except Exception as e:
+                    print(f"Failed on {unique_id}: {e}")
+                finally:
+                    with progress_lock:
+                        progress_bar.next()
+
+
+    with open(Config.REQUEST_BODY_FILE_PATH, 'w') as filetowrite:
+        request_bodies = [job.payload for job in job_list]
+        json.dump(request_bodies, filetowrite, indent=4)
+
+    assert input(f"You can confirm the request bodies at '{Config.REQUEST_BODY_FILE_PATH}'. Press y to continue bulk upload") == "y"
+
+    progress_lock = Lock()
+
+    with progress.Bar("Creating workOrders", max=len(job_list)) as progress_bar:
+        failed = []
+
+        with ThreadPoolExecutor(max_workers=Config.THREAD_POOL_COUNT) as executor:
+            futures = {
+                executor.submit(create_work_order_via_api, job.payload): job.unique_id
+                for job in job_list
+            }
+
+            for future in as_completed(futures):
+                unique_id = futures[future]
+
+                try:
+                    success = future.result()
                     if not success:
                         failed.append(unique_id)
                     else:
