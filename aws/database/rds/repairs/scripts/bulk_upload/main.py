@@ -32,12 +32,11 @@ class Config:
     DB_LOCAL_PORT = 6005
     THREAD_POOL_COUNT = 50
     LOG_FILE_PATH = "successfully_created_jobs.txt"
-    # SOURCE_FILE_PATH = "data/jobs_to_load.tsv"
     SOURCE_FILE_PATH = "data/new.csv"
     REQUEST_BODY_FILE_PATH = "data/request_bodies.json"
 
 @dataclass
-class CSV_KEYS:
+class CsvKeys:
     description_key = 'Description'
     sor_code_key = "SorCode"
     unique_id_key = 'Unique Id'
@@ -46,10 +45,15 @@ class CSV_KEYS:
 
 @dataclass
 class Job:
-    """One CSV row as it moves through build -> review -> send."""
     unique_id: str
-    # row: dict
     payload: WorkOrderPayload
+
+@dataclass
+class BulkUploadOptions:
+    trade_code = "PL"
+    contractor_reference = "RG2"
+    corporate_subjective_code="200045"
+    external_cost_code="H2555"
 
 
 session = get_session_for_stage(Config.STAGE)
@@ -139,12 +143,14 @@ def build_work_order_payload(
     customer_number = "0000"
     instructed_by = "Hackney Housing" # Default hackney TMO value
 
-    property_reference = row[CSV_KEYS.prop_ref_key]
+    property_reference = row[CsvKeys.prop_ref_key]
     priority = row["priority_from_db"]
-    description = row[CSV_KEYS.description_key]
+    description = row[CsvKeys.description_key]
 
     # Fetch property from asset DB
-    property = get_asset_by_prop_ref(property_reference)
+    property_response = get_asset_by_prop_ref(property_reference)
+
+    assert len(property_response) == 1, f"Property not returned {property_response}"
 
     # Define request body
     sorCodes : list[RateScheduleItemDict] =[{
@@ -177,8 +183,8 @@ def build_work_order_payload(
             "property": [{
                 "propertyReference": property_reference,
                 "address": {
-                    "addressLine": [property[0]['assetAddress']['addressLine1']],
-                    "postalCode": property[0]['assetAddress']['postCode'],
+                    "addressLine": [property_response[0]['assetAddress']['addressLine1']],
+                    "postalCode": property_response[0]['assetAddress']['postCode'],
                 },
                 "reference": [{"id": property_reference}],
             }]
@@ -208,9 +214,8 @@ def build_work_order_payload(
     }
 
     return Job(
-        unique_id=row[CSV_KEYS.unique_id_key],
+        unique_id=row[CsvKeys.unique_id_key],
         payload=payload,
-        # row = row
     )
 
 
@@ -222,48 +227,44 @@ def load_completed_jobs(path: str) -> set[str]:
 
 def map_and_validate_priorities(results: list[dict], all_priorities: dict[str, SORPriority]):
     missing_priorities = {
-        row[CSV_KEYS.priority_key]
+        row[CsvKeys.priority_key]
         for row in results
-        if PRIORITY_NAME_TO_DESCRIPTION.get(row[CSV_KEYS.priority_key]) not in all_priorities
+        if PRIORITY_NAME_TO_DESCRIPTION.get(row[CsvKeys.priority_key]) not in all_priorities
     }
     if missing_priorities:
         raise ValueError(f"Unknown priority values, not found in database: {missing_priorities}")
 
     for row in results:
-        row["priority_from_db"] = all_priorities[PRIORITY_NAME_TO_DESCRIPTION[row[CSV_KEYS.priority_key]]]
+        row["priority_from_db"] = all_priorities[PRIORITY_NAME_TO_DESCRIPTION[row[CsvKeys.priority_key]]]
 
 def validate_missing_sor_codes(results: list[dict], all_sor_codes: dict[str, SorCode]):
-    missing_codes = {row[CSV_KEYS.sor_code_key] for row in results if row[CSV_KEYS.sor_code_key] not in all_sor_codes}
+    missing_codes = {row[CsvKeys.sor_code_key] for row in results if row[CsvKeys.sor_code_key] not in all_sor_codes}
     if missing_codes:
         raise ValueError(f"Unknown SOR codes, not found in database: {missing_codes}")
 
 def main():
-    # Temporary hardcoded values (this should all be the same for a given bulk upload)
-    trade_code = "PL"
-    contractor_reference = "RG2"
-    corporate_subjective_code="200045"
-    external_cost_code="H2555"
-
-    # Slice the first 5 rows
-    results = csv_to_dict_list(Config.SOURCE_FILE_PATH, is_tsv=False)[:5]
+    results = csv_to_dict_list(Config.SOURCE_FILE_PATH, is_tsv=False)
     completed = load_completed_jobs(Config.LOG_FILE_PATH)
 
     # Filter out completed jobs
-    results = [row for row in results if str(row[CSV_KEYS.unique_id_key]) not in completed]
+    results = [row for row in results if str(row[CsvKeys.unique_id_key]) not in completed]
+
+    # For testing
+    # results = results[:500]
 
     if not results:
         print("Nothing left to process.")
         return
     
     # Extract SOR Codes
-    extracted_sor_codes = {row[CSV_KEYS.sor_code_key] for row in results}
+    extracted_sor_codes = {row[CsvKeys.sor_code_key] for row in results}
     
     # Fetch data from RepairsDB
     with RepairsSession() as db_session:
-        budget_code = get_budget_code(db_session, corporate_subjective_code, external_cost_code)
+        budget_code = get_budget_code(db_session, BulkUploadOptions.corporate_subjective_code, BulkUploadOptions.external_cost_code)
         all_priorities = get_sor_priorities(db_session)
-        trade = get_trade(db_session, trade_code)
-        contractor = get_contractor(db_session, contractor_reference)
+        trade = get_trade(db_session, BulkUploadOptions.trade_code)
+        contractor = get_contractor(db_session, BulkUploadOptions.contractor_reference)
         all_sor_codes = get_sor_codes(db_session, extracted_sor_codes)
 
     validate_missing_sor_codes(results, all_sor_codes)
@@ -274,9 +275,11 @@ def main():
     job_list: list[Job] = []
 
     with progress.Bar("Generating request payloads", max=len(results)) as progress_bar:
+        build_errors: list[tuple[str, str]] = []
+
         with ThreadPoolExecutor(max_workers=Config.THREAD_POOL_COUNT) as executor:
             futures = {
-                executor.submit(build_work_order_payload, row, budget_code, trade, all_sor_codes[row[CSV_KEYS.sor_code_key]], contractor): row[CSV_KEYS.unique_id_key]
+                executor.submit(build_work_order_payload, row, budget_code, trade, all_sor_codes[row[CsvKeys.sor_code_key]], contractor): row[CsvKeys.unique_id_key]
                 for row in results
             }
 
@@ -287,11 +290,15 @@ def main():
                     job = future.result()
                     job_list.append(job)
                 except Exception as e:
-                    print(f"Failed on {unique_id}: {e}")
+                    build_errors.append((unique_id, str(e)))
                 finally:
                     with progress_lock:
                         progress_bar.next()
 
+    if build_errors:
+        for unique_id, message in build_errors:
+            print(f"{unique_id}: {message}")
+        raise SystemExit(f"{len(build_errors)} row(s) failed to build — nothing sent.")
 
     with open(Config.REQUEST_BODY_FILE_PATH, 'w') as filetowrite:
         request_bodies = [job.payload for job in job_list]
