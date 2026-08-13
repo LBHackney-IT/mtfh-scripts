@@ -14,10 +14,7 @@ from aws.database.rds.repairs.entities.SORCodeStore import SorCode
 from aws.database.rds.repairs.entities.ContractorStore import Contractor
 from sqlalchemy.exc import NoResultFound, MultipleResultsFound
 from sqlalchemy.orm import Session
-from typing import TypeVar
-from sqlalchemy import Select, select
-from sqlalchemy.orm import Session
-from sqlalchemy.exc import NoResultFound, MultipleResultsFound
+from sqlalchemy import select
 from aws.database.rds.repairs.scripts.bulk_upload.types import *
 from dataclasses import dataclass
 import progress.bar as progress
@@ -91,25 +88,19 @@ def create_work_order_via_api(request_body: WorkOrderPayload) -> bool:
 def get_asset_by_prop_ref(property_reference: str):
     return get_by_secondary_index(asset_dynamodb_table, "AssetId", "assetId", property_reference)
 
-T = TypeVar("T")
-
-def fetch_one(session: Session, stmt: Select[tuple[T]], label: str) -> T:
+def get_budget_code(session: Session, corporate_subjective_code: str, external_cost_code: str) -> BudgetCode:
+    stmt = (
+        select(BudgetCode)
+        .where(BudgetCode.corporate_subjective_code == corporate_subjective_code)
+        .where(BudgetCode.external_cost_code == external_cost_code)
+        .where(BudgetCode.cost_code.is_(None))
+    )
     try:
         return session.scalars(stmt).one()
     except NoResultFound:
-        raise LookupError(f"No {label} found") from None
+        raise LookupError("No budget codes found") from None
     except MultipleResultsFound:
-        raise LookupError(f"Multiple {label} matched — expected exactly one") from None
-
-def get_budget_code(session: Session, corporate_subjective_code: str, external_cost_code: str):
-    return fetch_one(
-        session, 
-        select(BudgetCode)
-            .where(BudgetCode.corporate_subjective_code == corporate_subjective_code)
-            .where(BudgetCode.external_cost_code == external_cost_code) 
-            .where(BudgetCode.cost_code.is_(None)),
-        label="budget codes"
-    )
+        raise LookupError("Multiple budget codes matched — expected exactly one") from None
 
 def get_sor_priorities(session: Session) -> dict[str, SORPriority]:
     stmt = select(SORPriority).where(SORPriority.enabled.is_(True))
@@ -119,7 +110,13 @@ def get_sor_priorities(session: Session) -> dict[str, SORPriority]:
     return {priority.description: priority for priority in results}
 
 def get_trade(session: Session, code: str) -> Trade:
-    return fetch_one(session, select(Trade).where(Trade.code == code), label="trades")
+    stmt = select(Trade).where(Trade.code == code)
+    try:
+        return session.scalars(stmt).one()
+    except NoResultFound:
+        raise LookupError("No trades found") from None
+    except MultipleResultsFound:
+        raise LookupError("Multiple trades matched — expected exactly one") from None
 
 def get_sor_codes(session: Session, codes: set[str]) -> dict[str, SorCode]:
     stmt = select(SorCode).where(SorCode.enabled.is_(True)).where(SorCode.code.in_(codes))
@@ -127,7 +124,13 @@ def get_sor_codes(session: Session, codes: set[str]) -> dict[str, SorCode]:
     return {sor_code.code: sor_code for sor_code in results}
 
 def get_contractor(session: Session, reference: str) -> Contractor:
-    return fetch_one(session, select(Contractor).where(Contractor.reference == reference), label="contractors")
+    stmt = select(Contractor).where(Contractor.reference == reference)
+    try:
+        return session.scalars(stmt).one()
+    except NoResultFound:
+        raise LookupError("No contractors found") from None
+    except MultipleResultsFound:
+        raise LookupError("Multiple contractors matched — expected exactly one") from None
         
 
 def build_work_order_payload(
