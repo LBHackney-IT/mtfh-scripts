@@ -28,7 +28,7 @@ from utils.confirm import confirm
 @dataclass
 class Config:
     TABLE_NAME = "Assets"
-    STAGE = Stage.HOUSING_DEVELOPMENT
+    STAGE = Stage.HOUSING_PRODUCTION
     LOGGER = Logger("patch_asset_neighbourhood_from_uprn")
     FILE_PATH = str(Path(__file__).parent / "input" / "uprn_neighbourhood.csv")
     LOG_FILE = str(Path(__file__).parent / "migration_log.txt")
@@ -57,12 +57,12 @@ def scan_table_uprn_index(table: Table) -> dict[str, str]:
     Returns {uprn: item_id} for every record that carries a non-empty assetAddress.uprn.
     ProjectionExpression limits network payload to the two fields we actually need.
     """
-    Config.LOGGER.log("Scanning Assets table to build UPRN index (this may take a while)...")
     uprn_index: dict[str, str] = {}
 
     response = table.scan(
         ProjectionExpression="#item_id, assetAddress",
         ExpressionAttributeNames={"#item_id": "id"},
+        FilterExpression="attribute_not_exists(assetAddress.neighbourhood)",
     )
     for item in response.get("Items", []):
         asset_address = item.get("assetAddress") or {}
@@ -75,6 +75,7 @@ def scan_table_uprn_index(table: Table) -> dict[str, str]:
         response = table.scan(
             ProjectionExpression="#item_id, assetAddress",
             ExpressionAttributeNames={"#item_id": "id"},
+            FilterExpression="attribute_not_exists(assetAddress.neighbourhood)",
             ExclusiveStartKey=response["LastEvaluatedKey"],
         )
         for item in response.get("Items", []):
@@ -162,7 +163,9 @@ def write_migration_log(
                 f.write(f"    {uprn}: {err}\n")
             f.write("\n")
 
-        total = len(updated) + len(skipped_table_only) + len(skipped_csv_only) + len(errors)
+        total = (
+            len(updated) + len(skipped_table_only) + len(skipped_csv_only) + len(errors)
+        )
         f.write("=== Summary ===\n")
         f.write(f"    Updated:               {len(updated)}\n")
         f.write(f"    Skipped (Table Only):  {len(skipped_table_only)}\n")
@@ -192,7 +195,9 @@ def main():
         table, csv_lookup, table_uprn_index
     )
 
-    write_migration_log(Config.LOG_FILE, updated, skipped_table_only, skipped_csv_only, errors)
+    write_migration_log(
+        Config.LOG_FILE, updated, skipped_table_only, skipped_csv_only, errors
+    )
 
     Config.LOGGER.log(f"Updated:               {len(updated)}")
     Config.LOGGER.log(f"Skipped (Table Only):  {len(skipped_table_only)}")
