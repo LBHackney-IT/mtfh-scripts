@@ -12,7 +12,6 @@ from mypy_boto3_ssm import SSMClient
 from aws.authentication.generate_aws_resource import generate_aws_service
 from enums.enums import Stage
 
-
 def session_for_repairs(stage: Stage, expire_on_commit=True, local_port=5432) -> sessionmaker[SA_Session]:
     """
     Connect to repairs database
@@ -24,14 +23,22 @@ def session_for_repairs(stage: Stage, expire_on_commit=True, local_port=5432) ->
 
     pg_username_path = f"/repairs-api/{stage.to_env_name()}/postgres-username"
     pg_password_path = f"/repairs-api/{stage.to_env_name()}/postgres-password"
+    pg_db_name_path = f"/repairs-api/{stage.to_env_name()}/postgres-database"
 
     ssm: SSMClient = generate_aws_service('ssm', stage)
     username = ssm.get_parameter(Name=pg_username_path)['Parameter']['Value']
     password = ssm.get_parameter(Name=pg_password_path)['Parameter']['Value']
+    db_name = ssm.get_parameter(Name=pg_db_name_path)['Parameter']['Value']
 
-    connection_string = f"postgresql://{username}:{password}@localhost:{local_port}/repairs_db"
-    engine = create_engine("postgresql+psycopg2://", creator=lambda: psycopg2_connect(connection_string), echo=True)
-    RepairsBase.metadata.create_all(bind=engine)
+    connection_string = f"postgresql://{username}:{password}@localhost:{local_port}/{db_name}"
+    engine = create_engine(
+        "postgresql+psycopg2://", 
+        creator=lambda: psycopg2_connect(connection_string), 
+        echo=True
+    )
+    
+    # We dont want this script editing the DB Schema!
+    # RepairsBase.metadata.create_all(bind=engine)
 
     Session = sessionmaker(bind=engine, expire_on_commit=expire_on_commit)
 
