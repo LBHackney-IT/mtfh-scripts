@@ -2,8 +2,6 @@ from dataclasses import dataclass, asdict
 
 from sqlalchemy import String
 from sqlalchemy.orm import DeclarativeBase, MappedAsDataclass, Mapped, mapped_column
-from sqlalchemy.exc import NoResultFound, MultipleResultsFound
-
 
 class Base(MappedAsDataclass, DeclarativeBase):
     pass
@@ -11,7 +9,7 @@ class Base(MappedAsDataclass, DeclarativeBase):
 
 @dataclass
 class Trade(Base):
-    __tablename__ = "trades"  # confirm actual table name
+    __tablename__ = "trades" 
     __table_args__ = {"schema": "public"}
 
     code: Mapped[str] = mapped_column(String, primary_key=True)

@@ -25,7 +25,7 @@ import json
 
 @dataclass
 class Config:
-    STAGE = Stage.HOUSING_DEVELOPMENT 
+    STAGE = Stage.HOUSING_PRODUCTION 
     DB_LOCAL_PORT = 6005
     THREAD_POOL_COUNT = 50
     LOG_FILE_PATH = "successfully_created_jobs.txt"
@@ -47,7 +47,7 @@ class Job:
 
 @dataclass
 class BulkUploadOptions:
-    trade_code = "PL"
+    trade_code = "EL"
     contractor_reference = "RG2"
     corporate_subjective_code="200045"
     external_cost_code="H2555"
@@ -246,8 +246,12 @@ def validate_missing_sor_codes(results: list[dict], all_sor_codes: dict[str, Sor
         raise ValueError(f"Unknown SOR codes, not found in database: {missing_codes}")
 
 def main():
-    results = csv_to_dict_list(Config.SOURCE_FILE_PATH, is_tsv=False)
+    results = csv_to_dict_list(Config.SOURCE_FILE_PATH, is_tsv=False)[:5]
     completed = load_completed_jobs(Config.LOG_FILE_PATH)
+
+    # Testing has indicated that the schedule repairs endpoint doesnt validate very well. For example,
+    # I was able to raise Electrical SOR codes against a plumbing trade.
+    # If there is time, adding more validation would be a good idea
 
     # Filter out completed jobs
     results = [row for row in results if str(row[CsvKeys.unique_id_key]) not in completed]
