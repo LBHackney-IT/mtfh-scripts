@@ -364,15 +364,8 @@ def main():
 
     print("Upload complete - Adding to CSV")
 
-    data = [
-        []
-    ]
-
-    # Will append to an existing file
-    # might be worth adding a date value to the filename
-    filename = "uploaded-somethng-something-filename.csv"
-    data = [job_to_row(job) for job in job_list]
     fieldnames = ["WorkOrderReference", "PropertyReference", "PostCode", "Address", "UploadedAt"]
+    filename = f"data/bulk-upload-output-{datetime.now().strftime('%d%m%Y')}.csv"
 
     file_exists = os.path.isfile(filename) and os.path.getsize(filename) > 0
 
@@ -380,6 +373,6 @@ def main():
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         if not file_exists:
             writer.writeheader()
-        writer.writerows(data)
+        writer.writerows([job_to_row(job) for job in job_list])
 if __name__ == "__main__":
     main()
