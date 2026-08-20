@@ -22,10 +22,12 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from threading import Lock
 from aws.utils.csv_to_dict_list import csv_to_dict_list
 import json
+import csv
+from datetime import datetime, timezone
 
 @dataclass
 class Config:
-    STAGE = Stage.HOUSING_PRODUCTION 
+    STAGE = Stage.HOUSING_DEVELOPMENT 
     DB_LOCAL_PORT = 6005
     THREAD_POOL_COUNT = 50
     LOG_FILE_PATH = "successfully_created_jobs.txt"
@@ -44,6 +46,7 @@ class CsvKeys:
 class Job:
     unique_id: str
     payload: WorkOrderPayload
+    work_order_id: int | None 
 
 @dataclass
 class BulkUploadOptions:
@@ -73,17 +76,17 @@ assert repairs_api_key, "repairs-service-api-key variable not set"
 http = requests.Session() 
 http.headers.update({"Authorization": hackney_jwt, "x-hackney-user": hackney_jwt, "x-api-key": repairs_api_key})
 
-def create_work_order_via_api(request_body: WorkOrderPayload) -> bool:
+def create_work_order_via_api(request_body: WorkOrderPayload) -> tuple[bool, int | None]:
     """POST a work order to the Work Order API."""
 
     response = http.post(f"{repairs_api_url}/workOrders/schedule", json=request_body, timeout=30)
 
     try:
         response.raise_for_status()
-        return True
+        return True, response.json()["id"]
     except requests.HTTPError:
         print(f"Error response prop_ref:{request_body['site']['property'][0]['propertyReference']} body: {response.text}")
-        return False
+        return False, None
 
 def get_asset_by_prop_ref(property_reference: str):
     return get_by_secondary_index(asset_dynamodb_table, "AssetId", "assetId", property_reference)
@@ -219,6 +222,7 @@ def build_work_order_payload(
     return Job(
         unique_id=row[CsvKeys.unique_id_key],
         payload=payload,
+        work_order_id=None
     )
 
 
@@ -244,6 +248,18 @@ def validate_missing_sor_codes(results: list[dict], all_sor_codes: dict[str, Sor
     missing_codes = {row[CsvKeys.sor_code_key] for row in results if row[CsvKeys.sor_code_key] not in all_sor_codes}
     if missing_codes:
         raise ValueError(f"Unknown SOR codes, not found in database: {missing_codes}")
+
+def job_to_row(job: Job) -> dict:
+    property_ = job.payload["site"]["property"][0]
+    address = property_["address"]
+
+    return {
+        "WorkOrderReference": job.work_order_id,
+        "PropertyReference": property_["propertyReference"],
+        "PostCode": address["postalCode"],
+        "Address": ", ".join(address["addressLine"]),
+        "UploadedAt": datetime.now(timezone.utc).isoformat(),
+    }
 
 def main():
     results = csv_to_dict_list(Config.SOURCE_FILE_PATH, is_tsv=False)[:5]
@@ -315,6 +331,9 @@ def main():
 
     progress_lock = Lock()
 
+    # To append the work_order_refernece, we need a way to access the right record
+    jobs_by_id = {job.unique_id: job for job in job_list}
+
     with progress.Bar("Creating workOrders", max=len(job_list)) as progress_bar:
         failed = []
 
@@ -328,10 +347,12 @@ def main():
                 unique_id = futures[future]
 
                 try:
-                    success = future.result()
+                    success, work_order_id = future.result()
                     if not success:
                         failed.append(unique_id)
                     else:
+                        
+                        jobs_by_id[unique_id].work_order_id = work_order_id
                         with open(Config.LOG_FILE_PATH, "a") as f:
                             f.write(f"{unique_id}\n")
                 except Exception as e:
@@ -341,5 +362,24 @@ def main():
                     with progress_lock:
                         progress_bar.next()
 
+    print("Upload complete - Adding to CSV")
+
+    data = [
+        []
+    ]
+
+    # Will append to an existing file
+    # might be worth adding a date value to the filename
+    filename = "uploaded-somethng-something-filename.csv"
+    data = [job_to_row(job) for job in job_list]
+    fieldnames = ["WorkOrderReference", "PropertyReference", "PostCode", "Address", "UploadedAt"]
+
+    file_exists = os.path.isfile(filename) and os.path.getsize(filename) > 0
+
+    with open(filename, "a", newline="") as csvfile:
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+        if not file_exists:
+            writer.writeheader()
+        writer.writerows(data)
 if __name__ == "__main__":
     main()
