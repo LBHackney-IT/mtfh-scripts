@@ -37,11 +37,12 @@ class Config:
 @dataclass
 class CsvKeys:
     description_key = 'Description'
-    sor_code_key = "SorCode"
-    unique_id_key = 'Unique Id'
+    sor_code_key = "SorCodes"
     prop_ref_key = 'Property Reference'
     priority_key = "Priority"
 
+    unique_id_key = 'Property Reference' # Defaults to prop_ref. Can be changed if required
+    
 @dataclass
 class Job:
     unique_id: str
