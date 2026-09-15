@@ -27,7 +27,7 @@ from datetime import datetime, timezone
 
 @dataclass
 class Config:
-    STAGE = Stage.HOUSING_DEVELOPMENT 
+    STAGE = Stage.HOUSING_PRODUCTION  
     DB_LOCAL_PORT = 6005
     THREAD_POOL_COUNT = 50
     LOG_FILE_PATH = "successfully_created_jobs.txt"
@@ -87,9 +87,6 @@ def create_work_order_via_api(request_body: WorkOrderPayload) -> tuple[bool, int
     except requests.HTTPError:
         print(f"Error response prop_ref:{request_body['site']['property'][0]['propertyReference']} body: {response.text}")
         return False, None
-
-def get_asset_by_prop_ref(property_reference: str):
-    return get_by_secondary_index(asset_dynamodb_table, "AssetId", "assetId", property_reference)
 
 def get_budget_code(session: Session, corporate_subjective_code: str, external_cost_code: str) -> BudgetCode:
     stmt = (
@@ -154,7 +151,8 @@ def build_work_order_payload(
     description = row[CsvKeys.description_key]
 
     # Fetch property from asset DB
-    property_response = get_asset_by_prop_ref(property_reference)
+    property_response = get_by_secondary_index(asset_dynamodb_table, "AssetId", "assetId", property_reference)
+
 
     assert len(property_response) == 1, f"Property not returned {property_response}"
 
@@ -262,7 +260,7 @@ def job_to_row(job: Job) -> dict:
     }
 
 def main():
-    results = csv_to_dict_list(Config.SOURCE_FILE_PATH, is_tsv=False)[:5]
+    results = csv_to_dict_list(Config.SOURCE_FILE_PATH, is_tsv=False)
     completed = load_completed_jobs(Config.LOG_FILE_PATH)
 
     # Testing has indicated that the schedule repairs endpoint doesnt validate very well. For example,
