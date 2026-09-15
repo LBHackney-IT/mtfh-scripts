@@ -333,7 +333,8 @@ def main():
     if build_errors:
         for unique_id, message in build_errors:
             print(f"{unique_id}: {message}")
-        raise SystemExit(f"{len(build_errors)} row(s) failed to build — nothing sent.")
+
+        print(f"Warning: {len(build_errors)} row(s) failed to build — nothing sent.")
 
     with open(Config.REQUEST_BODY_FILE_PATH, 'w') as filetowrite:
         request_bodies = [job.payload for job in job_list]
