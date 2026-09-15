@@ -260,26 +260,40 @@ def job_to_row(job: Job) -> dict:
         "UploadedAt": datetime.now(timezone.utc).isoformat(),
     }
 
-def main():
-    jobs_dict_list = csv_to_dict_list(Config.SOURCE_FILE_PATH, is_tsv=False)
-    completed = load_completed_jobs(Config.LOG_FILE_PATH)
+def extract_unique_sor_codes(jobs_dict: list[dict]):
+    # Sor codes can be singluar or multiple. eg
+    # EICR0005
+    # EICR0006, EICR0005, EICR0007
 
+    # This methods extracts the raw values, and adds them to a set
+    unique_codes = set()
+
+    for row in jobs_dict:
+        raw_value = row[CsvKeys.sor_code_key]
+        cleaned_value = raw_value.replace(" ", "")
+        codes = cleaned_value.split(",")
+
+        for code in codes:
+            unique_codes.add(code)
+
+    return unique_codes
+
+def main():
     # Testing has indicated that the schedule repairs endpoint doesnt validate very well. For example,
     # I was able to raise Electrical SOR codes against a plumbing trade.
     # If there is time, adding more validation would be a good idea
 
-    # Filter out completed jobs
-    jobs_dict_list = [row for row in jobs_dict_list if str(row[CsvKeys.unique_id_key]) not in completed]
+    jobs_dict_list = csv_to_dict_list(Config.SOURCE_FILE_PATH, is_tsv=False)
 
-    # For testing
-    # results = results[:500]
+    # Filter out completed jobs
+    completed = load_completed_jobs(Config.LOG_FILE_PATH)
+    jobs_dict_list = [row for row in jobs_dict_list if str(row[CsvKeys.unique_id_key]) not in completed]
 
     if not jobs_dict_list:
         print("Nothing left to process.")
         return
     
-    # Extract SOR Codes
-    extracted_sor_codes = {row[CsvKeys.sor_code_key] for row in jobs_dict_list}
+    extracted_sor_codes = extract_unique_sor_codes(jobs_dict_list)
     
     # Fetch data from RepairsDB
     with RepairsSession() as db_session:
@@ -291,7 +305,6 @@ def main():
 
     validate_missing_sor_codes(jobs_dict_list, all_sor_codes)
     map_and_validate_priorities(jobs_dict_list, all_priorities)
-
 
     progress_lock = Lock()
     job_list: list[Job] = []
