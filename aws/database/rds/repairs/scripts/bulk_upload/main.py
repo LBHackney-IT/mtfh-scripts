@@ -260,7 +260,7 @@ def job_to_row(job: Job) -> dict:
         "UploadedAt": datetime.now(timezone.utc).isoformat(),
     }
 
-def extract_unique_sor_codes(jobs_dict: list[dict]):
+def extract_unique_sor_codes(work_order_list: list[dict]):
     # Sor codes can be singluar or multiple. eg
     # EICR0005
     # EICR0006, EICR0005, EICR0007
@@ -268,7 +268,7 @@ def extract_unique_sor_codes(jobs_dict: list[dict]):
     # This methods extracts the raw values, and adds them to a set
     unique_codes = set()
 
-    for row in jobs_dict:
+    for row in work_order_list:
         raw_value = row[CsvKeys.sor_code_key]
         cleaned_value = raw_value.replace(" ", "")
         codes = cleaned_value.split(",")
@@ -283,17 +283,17 @@ def main():
     # I was able to raise Electrical SOR codes against a plumbing trade.
     # If there is time, adding more validation would be a good idea
 
-    jobs_dict_list = csv_to_dict_list(Config.SOURCE_FILE_PATH, is_tsv=False)
+    work_order_list = csv_to_dict_list(Config.SOURCE_FILE_PATH, is_tsv=False)
 
     # Filter out completed jobs
     completed = load_completed_jobs(Config.LOG_FILE_PATH)
-    jobs_dict_list = [row for row in jobs_dict_list if str(row[CsvKeys.unique_id_key]) not in completed]
+    work_order_list = [row for row in work_order_list if str(row[CsvKeys.unique_id_key]) not in completed]
 
-    if not jobs_dict_list:
+    if not work_order_list:
         print("Nothing left to process.")
         return
     
-    extracted_sor_codes = extract_unique_sor_codes(jobs_dict_list)
+    extracted_sor_codes = extract_unique_sor_codes(work_order_list)
     
     # Fetch data from RepairsDB
     with RepairsSession() as db_session:
@@ -303,19 +303,19 @@ def main():
         contractor = get_contractor(db_session, BulkUploadOptions.contractor_reference)
         all_sor_codes = get_sor_codes(db_session, extracted_sor_codes)
 
-    validate_missing_sor_codes(jobs_dict_list, all_sor_codes)
-    map_and_validate_priorities(jobs_dict_list, all_priorities)
+    validate_missing_sor_codes(work_order_list, all_sor_codes)
+    map_and_validate_priorities(work_order_list, all_priorities)
 
     progress_lock = Lock()
     job_list: list[Job] = []
 
-    with progress.Bar("Generating request payloads", max=len(jobs_dict_list)) as progress_bar:
+    with progress.Bar("Generating request payloads", max=len(work_order_list)) as progress_bar:
         build_errors: list[tuple[str, str]] = []
 
         with ThreadPoolExecutor(max_workers=Config.THREAD_POOL_COUNT) as executor:
             futures = {
                 executor.submit(build_work_order_payload, row, budget_code, trade, all_sor_codes[row[CsvKeys.sor_code_key]], contractor): row[CsvKeys.unique_id_key]
-                for row in jobs_dict_list
+                for row in work_order_list
             }
 
             for future in as_completed(futures):
