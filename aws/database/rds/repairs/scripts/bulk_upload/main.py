@@ -42,7 +42,7 @@ class CsvKeys:
     priority_key = "Priority"
 
     unique_id_key = 'Property Reference' # Defaults to prop_ref. Can be changed if required
-    
+
 @dataclass
 class Job:
     unique_id: str
@@ -261,7 +261,7 @@ def job_to_row(job: Job) -> dict:
     }
 
 def main():
-    results = csv_to_dict_list(Config.SOURCE_FILE_PATH, is_tsv=False)
+    jobs_dict_list = csv_to_dict_list(Config.SOURCE_FILE_PATH, is_tsv=False)
     completed = load_completed_jobs(Config.LOG_FILE_PATH)
 
     # Testing has indicated that the schedule repairs endpoint doesnt validate very well. For example,
@@ -269,17 +269,17 @@ def main():
     # If there is time, adding more validation would be a good idea
 
     # Filter out completed jobs
-    results = [row for row in results if str(row[CsvKeys.unique_id_key]) not in completed]
+    jobs_dict_list = [row for row in jobs_dict_list if str(row[CsvKeys.unique_id_key]) not in completed]
 
     # For testing
     # results = results[:500]
 
-    if not results:
+    if not jobs_dict_list:
         print("Nothing left to process.")
         return
     
     # Extract SOR Codes
-    extracted_sor_codes = {row[CsvKeys.sor_code_key] for row in results}
+    extracted_sor_codes = {row[CsvKeys.sor_code_key] for row in jobs_dict_list}
     
     # Fetch data from RepairsDB
     with RepairsSession() as db_session:
@@ -289,20 +289,20 @@ def main():
         contractor = get_contractor(db_session, BulkUploadOptions.contractor_reference)
         all_sor_codes = get_sor_codes(db_session, extracted_sor_codes)
 
-    validate_missing_sor_codes(results, all_sor_codes)
-    map_and_validate_priorities(results, all_priorities)
+    validate_missing_sor_codes(jobs_dict_list, all_sor_codes)
+    map_and_validate_priorities(jobs_dict_list, all_priorities)
 
 
     progress_lock = Lock()
     job_list: list[Job] = []
 
-    with progress.Bar("Generating request payloads", max=len(results)) as progress_bar:
+    with progress.Bar("Generating request payloads", max=len(jobs_dict_list)) as progress_bar:
         build_errors: list[tuple[str, str]] = []
 
         with ThreadPoolExecutor(max_workers=Config.THREAD_POOL_COUNT) as executor:
             futures = {
                 executor.submit(build_work_order_payload, row, budget_code, trade, all_sor_codes[row[CsvKeys.sor_code_key]], contractor): row[CsvKeys.unique_id_key]
-                for row in results
+                for row in jobs_dict_list
             }
 
             for future in as_completed(futures):
