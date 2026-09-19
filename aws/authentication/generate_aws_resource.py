@@ -8,7 +8,10 @@ from typing import Any
 from enums.enums import Stage
 
 
-def get_session_for_stage(stage: Stage | str) -> Session:
+from typing import Union
+
+def get_session_for_stage(stage: Union[Stage, str]) -> Session:
+
     if isinstance(stage, Stage):
         stage_profile = stage.value.lower()
     else:

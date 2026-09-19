@@ -1,8 +1,9 @@
 from aws.database.dynamodb.utils.get_dynamodb_table import get_dynamodb_table
 from enums.enums import Stage
+from mypy_boto3_dynamodb.service_resource import Table 
 
 
-def process_scan(table, scan, next_person_ref):
+def process_scan(table: Table, scan, next_person_ref: int):
     for item in scan.get('Items', []):
         table.update_item(
             Key={'id': item['id']},
@@ -16,7 +17,7 @@ def process_scan(table, scan, next_person_ref):
 
 
 def main():
-    table = get_dynamodb_table(
+    table: Table = get_dynamodb_table(
         table_name="Persons",
         stage=Stage.HOUSING_DEVELOPMENT
     )
