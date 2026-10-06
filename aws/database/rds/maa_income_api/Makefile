@@ -12,7 +12,7 @@ SHELL := bash
 # Local port to connect to on your machine
 LOCAL_PORT = 3306
 # For Parameter store URL Paths
-ENVIRONMENT = development
+ENVIRONMENT = staging
 # Set to AWSCLI Profile name
 PROFILE = housing-${ENVIRONMENT}
 
@@ -36,6 +36,7 @@ DB_PASSWORD := $(shell aws ssm get-parameter --name ${DB_PASSWORD_PATH} --region
 port_forwarding_to_maa_db:
 	echo USERNAME: ${DB_USERNAME}
 	echo PASSWORD: ${DB_PASSWORD}
+	echo DB_NAME: housingfinancedb${ENVIRONMENT}
 	aws ssm start-session \
 		--target ${INSTANCE_ID} \
 		--region=eu-west-2  \
