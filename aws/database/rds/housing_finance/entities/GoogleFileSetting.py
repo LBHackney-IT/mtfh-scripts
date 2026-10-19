@@ -1,17 +1,14 @@
 from dataclasses import dataclass, asdict
 
 from sqlalchemy import String, INT, DateTime
-from sqlalchemy.orm import DeclarativeBase, MappedAsDataclass, Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column
 
-
-class Base(MappedAsDataclass, DeclarativeBase):
-    pass
+from aws.database.rds.housing_finance.entities.Base import Base
 
 
 @dataclass
 class GoogleFileSetting(Base):
     __tablename__ = "GoogleFileSetting"
-    __table_args__ = {"schema": "dbo"}
 
     Id: Mapped[int] = mapped_column(primary_key=True)
     GoogleIdentifier: Mapped[str] = mapped_column(String(255))
