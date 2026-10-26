@@ -26,3 +26,4 @@ psycopg2-binary>=2.9.9
 chime==0.7.0
 numpy<2
 progress>=1.6
+google-genai==2.33.0
